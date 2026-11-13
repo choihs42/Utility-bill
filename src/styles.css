@@ -44,3 +44,17 @@ input[type=number] { width:64px; }
 .issues li { display:flex; gap:12px; align-items:flex-start; padding:10px 0; border-bottom:1px solid var(--line); }
 .issues li > div { flex:1; }
 @media (max-width:760px) { .shell { flex-direction:column; } .side { width:auto; } .main { padding:16px; } }
+.toolbar { display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+.okmsg { background:#e2f4ea; color:var(--ok); }
+.okline { color:var(--ok); }
+.full { width:100%; margin:0; }
+.next { display:flex; gap:12px; align-items:center; flex-wrap:wrap; background:#eef3ff; border-color:#c9d6fb; }
+.steps { display:grid; gap:10px; }
+.step { display:flex; gap:14px; align-items:flex-start; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 16px; text-decoration:none; color:inherit; }
+.step:hover { border-color:var(--acc); }
+.step p { margin:2px 0 4px; color:var(--dim); }
+.step .num { width:28px; height:28px; border-radius:50%; background:#e6ecff; color:var(--acc); display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0; }
+.step.done .num { background:#e2f4ea; color:var(--ok); }
+.node .act { margin-left:auto; } .node .act button { padding:3px 8px; font-size:12px; margin-left:4px; }
+.asset-row button { padding:2px 8px; font-size:12px; margin-left:auto; }
+.logs { list-style:none; margin:0; padding:0; } .logs li { padding:4px 0; border-bottom:1px solid var(--line); }

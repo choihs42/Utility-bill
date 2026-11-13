@@ -1,7 +1,6 @@
 // 기준정보 도메인 타입. 모든 화면이 같은 데이터(Data)를 공유한다.
 
 export type TagStatus = '제안' | '승인' | '보류';
-export type RequestStatus = '승인 대기' | '승인됨' | '반려됨';
 
 export interface CodeGroup {
   key: string;
@@ -83,18 +82,12 @@ export interface Placement {
   nodeId: string;
   share: number; // 배분율(%)
   from: string;
-  status: 'active' | 'pending';
 }
 
-export interface ChangeRequest {
+export interface LogEntry {
   id: string;
-  title: string;
-  before: string;
-  after: string;
-  by: string;
   when: string;
-  status: RequestStatus;
-  placementId: string | null;
+  text: string;
 }
 
 export interface Data {
@@ -107,8 +100,8 @@ export interface Data {
   views: View[];
   nodes: TreeNode[];
   placements: Placement[];
-  requests: ChangeRequest[];
-  counters: { pl: number; rq: number };
+  log: LogEntry[];
+  counters: { pl: number; nd: number; lg: number };
 }
 
 export interface Issue {

@@ -3,15 +3,17 @@ import { useAction } from '../components/useAction';
 import { Msg } from '../components/Msg';
 import * as A from '../domain/actions';
 
-export function PointsPage() {
+export function PointsSection() {
   const data = useApp((s) => s.data);
-  const { msg, exec } = useAction();
+  const { msg, note, exec } = useAction();
   const units = data.codes.filter((c) => c.group === 'unit' && c.active);
   return (
     <>
-      <h2>포인트 승인</h2>
-      <p className="lead">수집 원천(raw) 태그를 표준 포인트로 확정합니다. 승인된 포인트만 설비 슬롯에 연결할 수 있습니다.</p>
-      <Msg text={msg} />
+      <div className="toolbar">
+        <button onClick={() => exec((d) => A.approveAllReady(d))}>추천 포인트 한 번에 승인</button>
+        <span className="dim">신뢰도 80% 이상이고 단위가 있는 태그만 승인합니다.</span>
+      </div>
+      <Msg text={msg} note={note} />
       <div className="card">
         <table>
           <thead><tr><th>원천 태그</th><th>표준 포인트</th><th>설비 · 슬롯</th><th>단위</th><th>신뢰도</th><th>상태</th><th></th></tr></thead>

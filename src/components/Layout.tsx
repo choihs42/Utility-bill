@@ -4,18 +4,17 @@ import { appStore, useApp } from '../store/store';
 import { validate } from '../domain/derive';
 
 const NAV = [
-  { to: '/', label: '설비 배치', end: true },
-  { to: '/points', label: '포인트 승인' },
-  { to: '/assets', label: '설비 연결' },
-  { to: '/codes', label: '코드 관리' },
-  { to: '/validate', label: '검증·승인' },
+  { to: '/', label: '시작하기', end: true },
+  { to: '/codes', label: '1  기준 코드' },
+  { to: '/params', label: '2  파라미터 관리' },
+  { to: '/tree', label: '3  계통 트리 설계' },
+  { to: '/map', label: '4  트리 매핑' },
+  { to: '/check', label: '5  점검' },
 ];
 
 export function Layout() {
   const data = useApp((s) => s.data);
-  const issues = useMemo(() => validate(data), [data]);
-  const errors = issues.filter((i) => i.severity === '오류').length;
-  const pending = data.requests.filter((r) => r.status === '승인 대기').length;
+  const errors = useMemo(() => validate(data).filter((i) => i.severity === '오류').length, [data]);
   return (
     <div className="shell">
       <aside className="side">
@@ -25,12 +24,7 @@ export function Layout() {
           {NAV.map((n) => (
             <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? 'on' : '')}>
               {n.label}
-              {n.to === '/validate' && (
-                <span className="badges">
-                  {errors > 0 && <b className="b err">{errors}</b>}
-                  {pending > 0 && <b className="b pend">{pending}</b>}
-                </span>
-              )}
+              {n.to === '/check' && errors > 0 && <b className="b err">{errors}</b>}
             </NavLink>
           ))}
         </nav>

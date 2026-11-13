@@ -81,12 +81,9 @@ export function assetPower(d: Data, assetId: string): number | null {
   return s?.tag?.value ?? null;
 }
 
-export function activePlacements(d: Data, view?: string): Placement[] {
-  return d.placements.filter((p) => {
-    if (p.status !== 'active') return false;
-    if (!view) return true;
-    return nodeById(d, p.nodeId)?.view === view;
-  });
+export function placementsIn(d: Data, view?: string): Placement[] {
+  if (!view) return d.placements;
+  return d.placements.filter((p) => nodeById(d, p.nodeId)?.view === view);
 }
 
 export function codeUsage(d: Data, group: string, code: string): number {
@@ -148,7 +145,7 @@ export function validate(d: Data): Issue[] {
 
   // 3) 뷰별 배치 누락 (requireCoverage 뷰)
   for (const v of d.views.filter((x) => x.requireCoverage)) {
-    const placed = new Set(activePlacements(d, v.key).map((p) => p.assetId));
+    const placed = new Set(placementsIn(d, v.key).map((p) => p.assetId));
     for (const a of d.assets) {
       if (!placed.has(a.id)) {
         out.push({
@@ -167,7 +164,7 @@ export function validate(d: Data): Issue[] {
   // 4) 배분율 합계 (같은 뷰에서 같은 설비)
   for (const v of d.views) {
     for (const a of d.assets) {
-      const pls = activePlacements(d, v.key).filter((p) => p.assetId === a.id);
+      const pls = placementsIn(d, v.key).filter((p) => p.assetId === a.id);
       if (pls.length === 0) continue;
       const sum = pls.reduce((acc, p) => acc + p.share, 0);
       if (sum !== 100) {
@@ -187,12 +184,12 @@ export function validate(d: Data): Issue[] {
   // 5) 전력계통 합산 정합성: 상위 노드 설비 값 vs 하위 설비 합
   const power = d.views.find((v) => v.key === 'power');
   if (power) {
-    for (const p of activePlacements(d, power.key)) {
+    for (const p of placementsIn(d, power.key)) {
       const parentVal = assetPower(d, p.assetId);
       if (!parentVal) continue;
       const ids = new Set(subtreeIds(d, p.nodeId));
       let sum = 0;
-      for (const q of activePlacements(d, power.key)) {
+      for (const q of placementsIn(d, power.key)) {
         if (!ids.has(q.nodeId)) continue;
         sum += (assetPower(d, q.assetId) ?? 0) * (q.share / 100);
       }
@@ -229,4 +226,33 @@ export function validate(d: Data): Issue[] {
   }
 
   return out.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === '오류' ? -1 : 1));
+}
+
+export interface StepInfo {
+  key: string;
+  to: string;
+  title: string;
+  desc: string;
+  stat: string;
+  done: boolean;
+}
+
+/** 시작하기 화면의 단계별 진행 현황 */
+export function steps(d: Data): StepInfo[] {
+  const assigned = d.tags.filter((t) => t.assetCode);
+  const approved = assigned.filter((t) => t.status === '승인').length;
+  const fulfilled = d.assets.filter((a) => fulfillment(d, a).ok).length;
+  const cov = d.views.filter((v) => v.requireCoverage);
+  const placed = d.assets.filter((a) => cov.every((v) => placementsIn(d, v.key).some((p) => p.assetId === a.id))).length;
+  const issues = validate(d);
+  const errors = issues.filter((i) => i.severity === '오류').length;
+  const warns = issues.length - errors;
+  const viewsWithNodes = d.views.filter((v) => d.nodes.some((n) => n.view === v.key)).length;
+  return [
+    { key: 'codes', to: '/codes', title: '기준 코드 확인', desc: '단위·설비 유형 같은 기본 코드를 확인합니다.', stat: `사용 중 코드 ${d.codes.filter((c) => c.active).length}개`, done: !issues.some((i) => i.id.startsWith('code:')) },
+    { key: 'params', to: '/params', title: '파라미터 관리', desc: '수집된 태그를 승인하고 설비에 연결합니다.', stat: `포인트 승인 ${approved}/${assigned.length} · 설비 연결 ${fulfilled}/${d.assets.length}`, done: fulfilled === d.assets.length },
+    { key: 'tree', to: '/tree', title: '계통 트리 설계', desc: '전력·조직·공간별로 트리 구조를 만듭니다.', stat: `노드 ${d.nodes.length}개 · 뷰 ${viewsWithNodes}/${d.views.length}`, done: viewsWithNodes === d.views.length },
+    { key: 'map', to: '/map', title: '트리 매핑', desc: '설비를 트리의 알맞은 위치에 놓습니다.', stat: `배치 완료 설비 ${placed}/${d.assets.length}`, done: placed === d.assets.length },
+    { key: 'check', to: '/check', title: '점검', desc: '빠뜨린 항목이 없는지 한 번에 확인합니다.', stat: `오류 ${errors} · 경고 ${warns}`, done: errors === 0 && warns === 0 },
+  ];
 }

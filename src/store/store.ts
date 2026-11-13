@@ -7,8 +7,8 @@ import type { Result } from '../domain/actions';
 
 export interface AppState {
   data: Data;
-  /** 순수 액션을 적용한다. 오류 메시지(없으면 null)를 돌려준다 */
-  run: (fn: (d: Data) => Result) => string | null;
+  /** 순수 액션을 적용한다. 오류(없으면 null)와 안내 문구를 돌려준다 */
+  run: (fn: (d: Data) => Result) => { error: string | null; note?: string };
   reset: () => void;
 }
 
@@ -20,7 +20,7 @@ export function makeStore(opts: { persist: boolean }): StoreApi<AppState> {
     run: (fn) => {
       const r = fn(get().data);
       if (!r.error) set({ data: r.data });
-      return r.error;
+      return { error: r.error, note: r.note };
     },
     reset: () => set({ data: fresh() }),
   });
@@ -28,8 +28,8 @@ export function makeStore(opts: { persist: boolean }): StoreApi<AppState> {
   if (!opts.persist) return createStore<AppState>()(creator as never);
   return createStore<AppState>()(
     persist(creator as never, {
-      name: 'hde-cems-master-data-v1',
-      version: 1,
+      name: 'hde-cems-master-data-v2',
+      version: 2,
       storage: createJSONStorage(() => localStorage),
       partialize: (s: AppState) => ({ data: s.data }),
     }) as never,

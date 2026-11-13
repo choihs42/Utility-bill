@@ -7,15 +7,15 @@ import { codeUsage } from '../domain/derive';
 
 export function CodesPage() {
   const data = useApp((s) => s.data);
-  const { msg, exec } = useAction();
+  const { msg, note, exec } = useAction();
   const [group, setGroup] = useState('unit');
   const [code, setCode] = useState('');
   const [label, setLabel] = useState('');
   const g = data.codeGroups.find((x) => x.key === group)!;
   return (
     <>
-      <h2>코드 관리</h2>
-      <p className="lead">공통 코드와 사이트 고유(LOC_) 코드를 한곳에서 관리합니다. 사용 중인 코드를 중지하면 영향 범위가 검증에 표시됩니다.</p>
+      <h2>기준 코드</h2>
+      <p className="lead">단위·설비 유형 같은 기본 코드입니다. 처음에는 확인만 하고, 현장에만 있는 항목이 있을 때 LOC_ 코드를 추가하세요.</p>
       <div className="tabs">
         {data.codeGroups.map((x) => <button key={x.key} className={x.key === group ? 'on' : ''} onClick={() => setGroup(x.key)}>{x.label}</button>)}
       </div>
@@ -41,7 +41,7 @@ export function CodesPage() {
         <input placeholder="LOC_코드" value={code} onChange={(e) => setCode(e.target.value)} disabled={!g.extendable} />
         <input placeholder="이름" value={label} onChange={(e) => setLabel(e.target.value)} disabled={!g.extendable} />
         <button disabled={!g.extendable} onClick={() => { exec((d) => A.addCode(d, group, code, label)); }}>추가</button>
-        <Msg text={msg} />
+        <Msg text={msg} note={note} />
       </div>
     </>
   );
