@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeStore } from '../src/store/store';
 import * as A from '../src/domain/actions';
-import { candidates, codeUsage, fulfillment, pathCode, steps, validate } from '../src/domain/derive';
+import { candidates, codeUsage, fulfillment, pathCode, validate } from '../src/domain/derive';
 
 // 화면 간 연동(파라미터 → 트리 설계 → 트리 매핑 → 점검)을 같은 데이터로 확인한다.
 const setup = () => {
@@ -138,9 +138,8 @@ describe('코드와 진행 현황', () => {
     expect(run((d) => A.addCode(d, 'energy', 'LOC_HOTW', '온수'))).toBeNull();
   });
 
-  it('시작하기 진행 현황이 작업에 따라 바뀌고, 변경 이력이 남는다', () => {
+  it('변경 이력이 남는다', () => {
     const { run, data } = setup();
-    expect(steps(data()).find((s) => s.key === 'params')?.done).toBe(false);
     run((d) => A.approveAllReady(d));
     expect(data().log[0].text).toContain('일괄 승인');
   });

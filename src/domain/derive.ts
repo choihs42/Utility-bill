@@ -227,32 +227,3 @@ export function validate(d: Data): Issue[] {
 
   return out.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === '오류' ? -1 : 1));
 }
-
-export interface StepInfo {
-  key: string;
-  to: string;
-  title: string;
-  desc: string;
-  stat: string;
-  done: boolean;
-}
-
-/** 시작하기 화면의 단계별 진행 현황 */
-export function steps(d: Data): StepInfo[] {
-  const assigned = d.tags.filter((t) => t.assetCode);
-  const approved = assigned.filter((t) => t.status === '승인').length;
-  const fulfilled = d.assets.filter((a) => fulfillment(d, a).ok).length;
-  const cov = d.views.filter((v) => v.requireCoverage);
-  const placed = d.assets.filter((a) => cov.every((v) => placementsIn(d, v.key).some((p) => p.assetId === a.id))).length;
-  const issues = validate(d);
-  const errors = issues.filter((i) => i.severity === '오류').length;
-  const warns = issues.length - errors;
-  const viewsWithNodes = d.views.filter((v) => d.nodes.some((n) => n.view === v.key)).length;
-  return [
-    { key: 'codes', to: '/codes', title: '기준 코드 확인', desc: '단위·설비 유형 같은 기본 코드를 확인합니다.', stat: `사용 중 코드 ${d.codes.filter((c) => c.active).length}개`, done: !issues.some((i) => i.id.startsWith('code:')) },
-    { key: 'params', to: '/params', title: '파라미터 관리', desc: '수집된 태그를 승인하고 설비에 연결합니다.', stat: `포인트 승인 ${approved}/${assigned.length} · 설비 연결 ${fulfilled}/${d.assets.length}`, done: fulfilled === d.assets.length },
-    { key: 'tree', to: '/tree', title: '계통 트리 설계', desc: '전력·조직·공간별로 트리 구조를 만듭니다.', stat: `노드 ${d.nodes.length}개 · 뷰 ${viewsWithNodes}/${d.views.length}`, done: viewsWithNodes === d.views.length },
-    { key: 'map', to: '/map', title: '트리 매핑', desc: '설비를 트리의 알맞은 위치에 놓습니다.', stat: `배치 완료 설비 ${placed}/${d.assets.length}`, done: placed === d.assets.length },
-    { key: 'check', to: '/check', title: '점검', desc: '빠뜨린 항목이 없는지 한 번에 확인합니다.', stat: `오류 ${errors} · 경고 ${warns}`, done: errors === 0 && warns === 0 },
-  ];
-}

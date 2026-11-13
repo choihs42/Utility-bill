@@ -1,6 +1,5 @@
-import { HashRouter, Route, Routes } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { HomePage } from './pages/HomePage';
 import { CodesPage } from './pages/CodesPage';
 import { ParamsPage } from './pages/ParamsPage';
 import { TreeDesignPage } from './pages/TreeDesignPage';
@@ -12,7 +11,7 @@ export default function App() {
     <HashRouter>
       <Routes>
         <Route element={<Layout />}>
-          <Route index element={<HomePage />} />
+          <Route index element={<Navigate to="/codes" replace />} />
           <Route path="codes" element={<CodesPage />} />
           <Route path="params" element={<ParamsPage />} />
           <Route path="tree" element={<TreeDesignPage />} />

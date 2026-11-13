@@ -4,7 +4,6 @@ import { appStore, useApp } from '../store/store';
 import { validate } from '../domain/derive';
 
 const NAV = [
-  { to: '/', label: '시작하기', end: true },
   { to: '/codes', label: '1  기준 코드' },
   { to: '/params', label: '2  파라미터 관리' },
   { to: '/tree', label: '3  계통 트리 설계' },
@@ -22,7 +21,7 @@ export function Layout() {
         <p className="sub">샘플 데이터 · 프론트 프로토타입</p>
         <nav>
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => (isActive ? 'on' : '')}>
+            <NavLink key={n.to} to={n.to} className={({ isActive }) => (isActive ? 'on' : '')}>
               {n.label}
               {n.to === '/check' && errors > 0 && <b className="b err">{errors}</b>}
             </NavLink>
