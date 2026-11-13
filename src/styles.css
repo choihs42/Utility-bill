@@ -58,3 +58,4 @@ input[type=number] { width:64px; }
 .node .act { margin-left:auto; } .node .act button { padding:3px 8px; font-size:12px; margin-left:4px; }
 .asset-row button { padding:2px 8px; font-size:12px; margin-left:auto; }
 .logs { list-style:none; margin:0; padding:0; } .logs li { padding:4px 0; border-bottom:1px solid var(--line); }
+.wide { width:100%; min-width:170px; }

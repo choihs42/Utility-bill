@@ -58,6 +58,34 @@ describe('파라미터 → 설비 연결', () => {
   });
 });
 
+describe('태그 매핑 편집', () => {
+  it('설비·항목·단위·이름을 직접 지정하면 새 포인트로 승인되고 ID가 부여된다', () => {
+    const { run, data } = setup();
+    expect(run((d) => A.approveTag(d, 'XYZ_T3'))).toMatch(/포인트명/);
+    run((d) => A.updateTag(d, 'XYZ_T3', { name: '집진 팬 전류(현장 확인)', assetCode: 'FAN1' }));
+    expect(run((d) => A.updateTag(d, 'XYZ_T3', { slot: '냉각' }))).toMatch(/없는 항목/);
+    run((d) => A.updateTag(d, 'XYZ_T3', { slot: '전류', unit: 'A' }));
+    expect(run((d) => A.approveTag(d, 'XYZ_T3'))).toBeNull();
+    const t = data().tags.find((x) => x.raw === 'XYZ_T3')!;
+    expect(t.status).toBe('승인');
+    expect(t.ptId).toBe('PT-000114');
+    const fan = data().assets.find((a) => a.code === 'FAN1')!;
+    expect(candidates(data(), fan, '전류').map((x) => x.raw)).toContain('XYZ_T3');
+  });
+
+  it('승인된 태그의 설비·항목을 바꾸면 승인과 연결이 해제된다', () => {
+    const { run, data } = setup();
+    expect(data().links.some((l) => l.raw === 'CP1_PRS')).toBe(true);
+    run((d) => A.updateTag(d, 'CP1_PRS', { assetCode: 'PMP1' }));
+    const t = data().tags.find((x) => x.raw === 'CP1_PRS')!;
+    expect(t.status).toBe('제안');
+    expect(t.slot).toBeNull();
+    expect(data().links.some((l) => l.raw === 'CP1_PRS')).toBe(false);
+    run((d) => A.updateTag(d, 'CP1_PRS', { unit: 'A' }));
+    expect(data().tags.find((x) => x.raw === 'CP1_PRS')?.unit).toBe('A');
+  });
+});
+
 describe('계통 트리 설계', () => {
   it('노드를 추가하면 경로 코드가 자동 생성되고, 같은 상위 아래 중복 코드는 막는다', () => {
     const { run, data } = setup();

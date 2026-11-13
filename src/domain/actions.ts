@@ -26,23 +26,70 @@ function done(d: Data, text: string, note?: string): Result {
 
 /* ---------- 파라미터 ---------- */
 
+export interface TagPatch {
+  name?: string;
+  assetCode?: string | null;
+  slot?: string | null;
+  unit?: string;
+}
+
+/** 태그 매핑 편집: 포인트명(직접 입력), 설비·항목·단위(목록 선택). 설비/항목이 바뀌면 승인과 연결을 되돌린다 */
+export function updateTag(d: Data, raw: string, patch: TagPatch): Result {
+  const t = d.tags.find((x) => x.raw === raw);
+  if (!t) return fail(d, '태그를 찾을 수 없습니다.');
+  const next = { ...t };
+  if (patch.name !== undefined) next.name = patch.name.trim();
+  if (patch.unit !== undefined) {
+    if (patch.unit !== '') {
+      const code = d.codes.find((c) => c.group === 'unit' && c.code === patch.unit);
+      if (!code || !code.active) return fail(d, `사용할 수 없는 단위 코드입니다: ${patch.unit}`);
+    }
+    next.unit = patch.unit;
+  }
+  if (patch.assetCode !== undefined) {
+    if (patch.assetCode !== null && !d.assets.some((a) => a.code === patch.assetCode)) return fail(d, '없는 설비입니다.');
+    next.assetCode = patch.assetCode;
+    if (patch.slot === undefined) next.slot = null;
+  }
+  if (patch.slot !== undefined) {
+    const a = d.assets.find((x) => x.code === next.assetCode);
+    if (patch.slot !== null && !(a && templateSlots(d, a).some((s) => s.item === patch.slot))) return fail(d, '이 설비에 없는 항목입니다.');
+    next.slot = patch.slot;
+  }
+  const remap = next.assetCode !== t.assetCode || next.slot !== t.slot;
+  let links = d.links;
+  let note: string | undefined;
+  if (remap && t.status === '승인') {
+    next.status = '제안';
+    links = d.links.filter((l) => l.raw !== raw);
+    note = '설비/항목을 바꿔 승인이 해제되고 기존 연결이 풀렸습니다. 다시 승인하세요.';
+  }
+  const tags = d.tags.map((x) => (x.raw === raw ? next : x));
+  return done({ ...d, tags, links }, `태그 매핑 수정: ${raw}`, note);
+}
+
 export function setTagUnit(d: Data, raw: string, unit: string): Result {
-  const code = d.codes.find((c) => c.group === 'unit' && c.code === unit);
-  if (!code || !code.active) return fail(d, `사용할 수 없는 단위 코드입니다: ${unit}`);
-  return done({ ...d, tags: d.tags.map((t) => (t.raw === raw ? { ...t, unit } : t)) }, `단위 지정: ${raw} → ${unit}`);
+  return updateTag(d, raw, { unit });
+}
+
+function nextPtId(d: Data): string {
+  const max = d.tags.reduce((m, t) => Math.max(m, Number(t.ptId.replace('PT-', '')) || 0), 0);
+  return `PT-${String(max + 1).padStart(6, '0')}`;
 }
 
 export function approveTag(d: Data, raw: string): Result {
   const t = d.tags.find((x) => x.raw === raw);
   if (!t) return fail(d, '태그를 찾을 수 없습니다.');
-  if (!t.ptId || !t.assetCode) return fail(d, '자동으로 설비를 찾지 못한 태그입니다. 현장 확인 후 매핑하세요.');
-  if (!t.unit) return fail(d, '단위가 없는 태그는 승인할 수 없습니다. 단위를 먼저 지정하세요.');
-  return done({ ...d, tags: d.tags.map((x) => (x.raw === raw ? { ...x, status: '승인' } : x)) }, `포인트 승인: ${raw}`);
+  if (!t.name) return fail(d, '포인트명을 입력하세요.');
+  if (!t.assetCode || !t.slot) return fail(d, '설비와 항목을 선택하세요.');
+  if (!t.unit) return fail(d, '단위가 없는 태그는 승인할 수 없습니다. 단위를 먼저 선택하세요.');
+  const ptId = t.ptId || nextPtId(d);
+  return done({ ...d, tags: d.tags.map((x) => (x.raw === raw ? { ...x, ptId, status: '승인' } : x)) }, `포인트 승인: ${raw}`);
 }
 
 /** 신뢰도 80% 이상이고 단위가 있는 제안 태그를 한 번에 승인 */
 export function approveAllReady(d: Data): Result {
-  const ready = d.tags.filter((t) => t.status === '제안' && t.ptId && t.assetCode && t.unit && t.conf >= 80);
+  const ready = d.tags.filter((t) => t.status === '제안' && t.name && t.assetCode && t.slot && t.unit && t.conf >= 80);
   if (ready.length === 0) return { data: d, error: null, note: '한 번에 승인할 수 있는 포인트가 없습니다.' };
   const set = new Set(ready.map((t) => t.raw));
   return done({ ...d, tags: d.tags.map((t) => (set.has(t.raw) ? { ...t, status: '승인' } : t)) }, `포인트 ${ready.length}개 일괄 승인`, `${ready.length}개를 승인했습니다. 단위가 없거나 신뢰도가 낮은 태그는 남겨두었습니다.`);
