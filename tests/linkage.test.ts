@@ -129,6 +129,43 @@ describe('코드', () => {
   });
 });
 
+describe('하드코딩 없는 설정', () => {
+  it('코드 테이블의 접두사·형식을 바꾸면 새 코드부터 적용된다', () => {
+    const { run, data } = setup();
+    expect(run((d) => A.updateCodeGroup(d, 'unit', { prefix: '' }))).toBeNull();
+    expect(run((d) => A.addCode(d, 'unit', 'Mpa', '메가파스칼'))).toBeNull();
+    expect(data().codes.find((c) => c.code === 'Mpa')?.scope).toBe('로컬');
+    expect(run((d) => A.updateCodeGroup(d, 'param', { prefix: 'lower' }))).toMatch(/접두사/);
+    expect(run((d) => A.updateCodeGroup(d, 'param', { pattern: '([' }))).toMatch(/정규식/);
+    expect(run((d) => A.updateCodeGroup(d, 'param', { label: ' ' }))).toMatch(/비울 수 없/);
+    expect(run((d) => A.updateCodeGroup(d, 'param', { prefix: 'SITE_' }))).toBeNull();
+    expect(run((d) => A.addCode(d, 'param', 'LOC_X', 'x'))).toMatch(/SITE_/);
+  });
+
+  it('합산 점검은 파라미터의 합산 속성과 트리의 합산 점검 옵션을 따른다', () => {
+    const { run, data } = setup();
+    expect(ids(data())).toContain('sum:pw1:PWR_KW');
+    run((d) => A.setViewOption(d, 'power', { sumCheck: false }));
+    expect(ids(data()).some((i) => i.startsWith('sum:'))).toBe(false);
+    run((d) => A.setViewOption(d, 'power', { sumCheck: true }));
+    run((d) => A.updateCode(d, 'param', 'PWR_KW', { sum: false }));
+    expect(ids(data()).some((i) => i.startsWith('sum:'))).toBe(false);
+    run((d) => A.updateCode(d, 'param', 'PWR_KW', { sum: true }));
+    expect(ids(data())).toContain('sum:pw1:PWR_KW');
+    run((d) => A.setViewOption(d, 'org', { sumCheck: true }));
+    expect(ids(data()).filter((i) => i.startsWith('sum:'))).toContain('sum:pw1:PWR_KW');
+  });
+
+  it('포인트 ID 형식은 설정을 따르고 번호는 이어서 부여된다', () => {
+    const { run, data } = setup();
+    expect(run((d) => A.setPtFormat(d, 'P#', 6))).toMatch(/접두사/);
+    expect(run((d) => A.setPtFormat(d, 'PT-', 2))).toMatch(/자릿수/);
+    expect(run((d) => A.setPtFormat(d, 'EP', 5))).toBeNull();
+    run((d) => A.linkTag(d, 'CP1_RUN', 'a2'));
+    expect(tag(data(), 'CP1_RUN').ptId).toBe('EP00111');
+  });
+});
+
 describe('설비', () => {
   it('설비 코드를 바꿔도 연결과 트리 배치가 유지된다(내부 ID 참조)', () => {
     const { run, data } = setup();
@@ -202,16 +239,16 @@ describe('점검', () => {
 
   it('전력계통 합산 경고는 FAN1을 연결·배치하면 사라지고, 허용 오차 설정을 따른다', () => {
     const { run, data } = setup();
-    expect(validate(data()).find((i) => i.id === 'sum:pw1')?.title).toContain('3.0%');
+    expect(validate(data()).find((i) => i.id === 'sum:pw1:PWR_KW')?.title).toContain('3.0%');
     run((d) => A.setTolerance(d, 5));
-    expect(ids(data())).not.toContain('sum:pw1');
+    expect(ids(data())).not.toContain('sum:pw1:PWR_KW');
     run((d) => A.setTolerance(d, 2));
     run((d) => A.linkTag(d, 'FAN1_KW', 'a3'));
     run((d) => A.placeAsset(d, 'power', 'a3', 'pw3'));
-    expect(ids(data())).not.toContain('sum:pw1');
+    expect(ids(data())).not.toContain('sum:pw1:PWR_KW');
     expect(ids(data())).not.toContain('nopoint:a3');
     run((d) => A.deleteNode(d, 'nd-1'));
-    expect(ids(data())).toContain('sum:pw1');
+    expect(ids(data())).toContain('sum:pw1:PWR_KW');
     expect(run((d) => A.setTolerance(d, 80))).toMatch(/0~50/);
   });
 

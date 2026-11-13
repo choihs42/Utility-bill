@@ -38,8 +38,8 @@ export function makeStore(opts: { persist: boolean }): StoreApi<AppState> {
   if (!opts.persist) return createStore<AppState>()(creator as never);
   return createStore<AppState>()(
     persist(creator as never, {
-      name: 'hde-cems-master-data-v4',
-      version: 4,
+      name: 'hde-cems-master-data-v5',
+      version: 5,
       storage: createJSONStorage(() => localStorage),
       partialize: (s: AppState) => ({ data: s.data }),
     }) as never,

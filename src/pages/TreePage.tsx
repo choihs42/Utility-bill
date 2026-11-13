@@ -78,6 +78,10 @@ function ViewTab({ viewKey }: { viewKey: string }) {
 
   return (
     <>
+      <div className="bar">
+        <label className="chk"><input type="checkbox" checked={view.requireCoverage} onChange={(e) => exec((d) => A.setViewOption(d, viewKey, { requireCoverage: e.target.checked }))} /> 모든 설비 배치 필수</label>
+        <label className="chk"><input type="checkbox" checked={view.sumCheck} onChange={(e) => exec((d) => A.setViewOption(d, viewKey, { sumCheck: e.target.checked }))} /> 합산 점검</label>
+      </div>
       <Msg text={msg} note={note} />
       <div className="card flush">
         <table>

@@ -1,31 +1,23 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../store/store';
-import { useAction } from '../components/useAction';
-import { Msg } from '../components/Msg';
 import { Tabs } from '../components/ui';
-import * as A from '../domain/actions';
 import { validate } from '../domain/derive';
 
 export function CheckPage() {
   const data = useApp((s) => s.data);
-  const { msg, exec } = useAction();
   const [tab, setTab] = useState<'result' | 'log'>('result');
   const issues = useMemo(() => validate(data), [data]);
   const errs = issues.filter((i) => i.severity === '오류').length;
   return (
     <>
       <Tabs items={[{ key: 'result', label: `점검 결과 ${issues.length}` }, { key: 'log', label: '변경 이력' }]} value={tab} onChange={setTab} />
-      <Msg text={msg} />
       {tab === 'result' ? (
         <>
           <div className="bar">
             <span className="dim">오류 {errs} · 경고 {issues.length - errs}</span>
             <span className="grow" />
-            <span className="dim">전력계통 합산 허용 오차</span>
-            <select value={data.settings.sumTolerancePct} onChange={(e) => exec((d) => A.setTolerance(d, Number(e.target.value)))}>
-              {[0.5, 1, 2, 3, 5, 10].map((v) => <option key={v} value={v}>{v}%</option>)}
-            </select>
+            <span className="dim">합산 허용 오차 {data.settings.sumTolerancePct}% (코드 관리 › 설정)</span>
           </div>
           <div className="card flush">
             <table>

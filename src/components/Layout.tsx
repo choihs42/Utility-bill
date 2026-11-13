@@ -5,10 +5,11 @@ import { validate } from '../domain/derive';
 import { ask } from './confirm';
 
 const NAV = [
-  { to: '/data', no: '1', label: '코드·태그' },
-  { to: '/tree', no: '2', label: '트리 설계' },
-  { to: '/map', no: '3', label: '포인트 매핑' },
-  { to: '/check', no: '4', label: '점검' },
+  { to: '/codes', no: '1', label: '코드 관리' },
+  { to: '/tags', no: '2', label: '수집 태그' },
+  { to: '/tree', no: '3', label: '트리 설계' },
+  { to: '/map', no: '4', label: '포인트 매핑' },
+  { to: '/check', no: '5', label: '점검' },
 ];
 
 export function Layout() {

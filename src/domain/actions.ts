@@ -37,12 +37,13 @@ export interface CodeExtra {
   desc?: string;
   unit?: string;
   multi?: boolean;
+  sum?: boolean;
 }
 
 export function addCode(d: Data, group: string, code: string, label: string, extra: CodeExtra = {}): Result {
   const g = d.codeGroups.find((x) => x.key === group);
   if (!g) return fail(d, '코드 그룹을 찾을 수 없습니다.');
-  if (!code.startsWith('LOC_')) return fail(d, '사이트 고유 코드는 LOC_ 로 시작해야 합니다 (표준 코드와 구분).');
+  if (g.prefix && !code.startsWith(g.prefix)) return fail(d, `사이트 고유 코드는 ${g.prefix} 로 시작해야 합니다 (표준 코드와 구분).`);
   if (!new RegExp(g.pattern).test(code)) return fail(d, `형식 오류 — ${g.rule}`);
   if (d.codes.some((c) => c.group === group && c.code === code)) return fail(d, '이미 있는 코드입니다.');
   if (!label.trim()) return fail(d, '코드명을 입력하세요.');
@@ -51,6 +52,7 @@ export function addCode(d: Data, group: string, code: string, label: string, ext
     if (extra.unit && !unitActive(d, extra.unit)) return fail(d, '사용할 수 없는 단위입니다.');
     item.unit = extra.unit ?? '';
     item.multi = Boolean(extra.multi);
+    item.sum = Boolean(extra.sum);
   }
   return done({ ...d, codes: [...d.codes, item] }, `코드 추가: ${g.label} · ${code}`);
 }
@@ -67,6 +69,7 @@ export function updateCode(d: Data, group: string, code: string, patch: CodeExtr
     ...(patch.desc !== undefined ? { desc: patch.desc.trim() } : {}),
     ...(group === 'param' && patch.unit !== undefined ? { unit: patch.unit } : {}),
     ...(group === 'param' && patch.multi !== undefined ? { multi: patch.multi } : {}),
+    ...(group === 'param' && patch.sum !== undefined ? { sum: patch.sum } : {}),
   };
   return done({ ...d, codes: d.codes.map((x) => (x === c ? next : x)) }, `코드 수정: ${code}`);
 }
@@ -143,8 +146,8 @@ export function bulkUpdateTags(d: Data, raws: string[], patch: TagPatch): Result
 }
 
 function nextPtId(d: Data): string {
-  const max = d.tags.reduce((m, t) => Math.max(m, Number(t.ptId.replace('PT-', '')) || 0), 0);
-  return `PT-${String(max + 1).padStart(6, '0')}`;
+  const max = d.tags.reduce((m, t) => Math.max(m, Number(/(\d+)$/.exec(t.ptId)?.[1]) || 0), 0);
+  return `${d.settings.ptPrefix}${String(max + 1).padStart(d.settings.ptDigits, '0')}`;
 }
 
 /** 설비 연결(또는 해제) 검증 + 적용(이력 없음) */
@@ -380,4 +383,37 @@ export function deleteNode(d: Data, id: string): Result {
 export function setTolerance(d: Data, pct: number): Result {
   if (!(pct >= 0 && pct <= 50)) return fail(d, '허용 오차는 0~50% 사이로 지정하세요.');
   return done({ ...d, settings: { ...d.settings, sumTolerancePct: pct } }, `합산 허용 오차 변경: ${pct}%`);
+}
+
+export function setPtFormat(d: Data, prefix: string, digits: number): Result {
+  const p = prefix.trim();
+  if (!/^[A-Za-z0-9_-]{0,8}$/.test(p)) return fail(d, '포인트 ID 접두사는 영문·숫자·-·_ 8자 이하로 입력하세요.');
+  if (!Number.isInteger(digits) || digits < 3 || digits > 10) return fail(d, '자릿수는 3~10 사이로 지정하세요.');
+  return done({ ...d, settings: { ...d.settings, ptPrefix: p, ptDigits: digits } }, `포인트 ID 형식 변경: ${p}${'0'.repeat(digits)}`, '이미 부여된 포인트 ID는 바뀌지 않고, 새로 부여하는 ID부터 적용됩니다.');
+}
+
+/* ---------- 코드 테이블 / 트리 옵션 ---------- */
+
+export function updateCodeGroup(d: Data, key: string, patch: { label?: string; prefix?: string; pattern?: string; rule?: string }): Result {
+  const g = d.codeGroups.find((x) => x.key === key);
+  if (!g) return fail(d, '코드 테이블을 찾을 수 없습니다.');
+  if (patch.label !== undefined && !patch.label.trim()) return fail(d, '테이블명은 비울 수 없습니다.');
+  if (patch.prefix !== undefined && !/^[A-Z0-9_]{0,8}$/.test(patch.prefix.trim())) return fail(d, '접두사는 영문 대문자·숫자·밑줄 8자 이하로 입력하세요.');
+  if (patch.pattern !== undefined) {
+    try { new RegExp(patch.pattern); } catch { return fail(d, '형식(정규식)이 올바르지 않습니다.'); }
+  }
+  const next = {
+    ...g,
+    ...(patch.label !== undefined ? { label: patch.label.trim() } : {}),
+    ...(patch.prefix !== undefined ? { prefix: patch.prefix.trim() } : {}),
+    ...(patch.pattern !== undefined ? { pattern: patch.pattern } : {}),
+    ...(patch.rule !== undefined ? { rule: patch.rule } : {}),
+  };
+  return done({ ...d, codeGroups: d.codeGroups.map((x) => (x === g ? next : x)) }, `코드 테이블 수정: ${next.label}`, '이미 등록된 코드는 바뀌지 않고, 새로 추가하는 코드부터 적용됩니다.');
+}
+
+export function setViewOption(d: Data, view: string, patch: { requireCoverage?: boolean; sumCheck?: boolean }): Result {
+  const v = d.views.find((x) => x.key === view);
+  if (!v) return fail(d, '트리를 찾을 수 없습니다.');
+  return done({ ...d, views: d.views.map((x) => (x === v ? { ...x, ...patch } : x)) }, `트리 옵션 변경: ${v.label}`);
 }

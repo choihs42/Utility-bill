@@ -9,6 +9,8 @@ export interface CodeGroup {
   /** 새 코드가 만족해야 하는 형식(정규식) */
   pattern: string;
   rule: string;
+  /** 사이트 고유(로컬) 코드 접두사. 비우면 접두사 없이 추가 */
+  prefix: string;
 }
 
 export interface CodeItem {
@@ -24,6 +26,8 @@ export interface CodeItem {
   unit?: string;
   /** 파라미터 코드 전용: 같은 설비에 여러 개 연결 허용 (예: 상별 전류) */
   multi?: boolean;
+  /** 파라미터 코드 전용: 합산 점검 대상(상위 값과 하위 합 비교) */
+  sum?: boolean;
 }
 
 /** 수집 원천 태그(raw). 파라미터·단위를 정하고(정리됨), 설비에 연결하면(연결됨) 포인트가 된다 */
@@ -55,6 +59,8 @@ export interface View {
   requireCoverage: boolean;
   /** true 이면 설비가 아닌 그룹 노드(공장·건물 등)를 만들 수 있다 */
   groups: boolean;
+  /** true 이면 상위 설비 값과 하위 합을 비교한다(합산 대상 파라미터 기준) */
+  sumCheck: boolean;
 }
 
 /** 트리 노드: 설비를 놓은 것(assetId)이거나 뷰 전용 그룹(code/label/type) */
@@ -83,7 +89,7 @@ export interface Data {
   views: View[];
   nodes: TreeNode[];
   log: LogEntry[];
-  settings: { sumTolerancePct: number };
+  settings: { sumTolerancePct: number; ptPrefix: string; ptDigits: number };
   counters: { nd: number; lg: number; as: number };
 }
 

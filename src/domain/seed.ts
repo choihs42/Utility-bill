@@ -9,14 +9,14 @@ const c = (group: string, code: string, label: string, abbr = '', desc = '', ext
 
 export const SEED: Data = {
   codeGroups: [
-    { key: 'param', label: '파라미터', pattern: '^[A-Z][A-Z0-9_]{1,13}$', rule: '영문 대문자·숫자·밑줄 2~14자' },
-    { key: 'unit', label: '단위', pattern: '^[A-Za-z0-9/%_]{1,16}$', rule: '영문·숫자·/·%·밑줄 1~16자' },
-    { key: 'asset', label: '설비 유형', pattern: '^[A-Z][A-Z0-9_]{1,13}$', rule: '영문 대문자·숫자·밑줄 2~14자' },
-    { key: 'energy', label: '에너지원', pattern: '^[A-Z][A-Z0-9_]{1,13}$', rule: '영문 대문자·숫자·밑줄 2~14자' },
-    { key: 'group', label: '그룹 유형', pattern: '^[A-Z][A-Z0-9_]{1,13}$', rule: '영문 대문자·숫자·밑줄 2~14자' },
+    { key: 'param', label: '파라미터', pattern: '^[A-Z][A-Z0-9_]{1,13}$', rule: '영문 대문자·숫자·밑줄 2~14자', prefix: 'LOC_' },
+    { key: 'unit', label: '단위', pattern: '^[A-Za-z0-9/%_]{1,16}$', rule: '영문·숫자·/·%·밑줄 1~16자', prefix: 'LOC_' },
+    { key: 'asset', label: '설비 유형', pattern: '^[A-Z][A-Z0-9_]{1,13}$', rule: '영문 대문자·숫자·밑줄 2~14자', prefix: 'LOC_' },
+    { key: 'energy', label: '에너지원', pattern: '^[A-Z][A-Z0-9_]{1,13}$', rule: '영문 대문자·숫자·밑줄 2~14자', prefix: 'LOC_' },
+    { key: 'group', label: '그룹 유형', pattern: '^[A-Z][A-Z0-9_]{1,13}$', rule: '영문 대문자·숫자·밑줄 2~14자', prefix: 'LOC_' },
   ],
   codes: [
-    c('param', 'PWR_KW', '순시 전력', 'KW', '순간 소비 전력', { unit: 'kW' }),
+    c('param', 'PWR_KW', '순시 전력', 'KW', '순간 소비 전력', { unit: 'kW', sum: true }),
     c('param', 'PWR_KWH', '누적 전력량', 'KWH', '누적 사용 전력량', { unit: 'kWh' }),
     c('param', 'CUR_A', '전류', 'A', '상별 전류(여러 개 연결 가능)', { unit: 'A', multi: true }),
     c('param', 'PRS_BAR', '압력', 'PRS', '토출 압력', { unit: 'bar' }),
@@ -71,9 +71,9 @@ export const SEED: Data = {
     { id: 'a8', code: 'MCC2', name: 'MCC-2', type: 'PANEL', energy: 'ELEC' },
   ],
   views: [
-    { key: 'power', label: '전력계통', requireCoverage: true, groups: false },
-    { key: 'org', label: '조직', requireCoverage: false, groups: true },
-    { key: 'space', label: '공간', requireCoverage: false, groups: true },
+    { key: 'power', label: '전력계통', requireCoverage: true, groups: false, sumCheck: true },
+    { key: 'org', label: '조직', requireCoverage: false, groups: true, sumCheck: false },
+    { key: 'space', label: '공간', requireCoverage: false, groups: true, sumCheck: false },
   ],
   nodes: [
     { id: 'pw1', view: 'power', parent: null, assetId: 'a0', share: 100 },
@@ -94,6 +94,6 @@ export const SEED: Data = {
     { id: 'sp4', view: 'space', parent: 'sp2', assetId: 'a1', share: 100 },
   ],
   log: [],
-  settings: { sumTolerancePct: 2 },
+  settings: { sumTolerancePct: 2, ptPrefix: 'PT-', ptDigits: 6 },
   counters: { nd: 1, lg: 1, as: 9 },
 };

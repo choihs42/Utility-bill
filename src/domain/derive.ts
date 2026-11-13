@@ -2,8 +2,6 @@ import type { Asset, CodeItem, Data, Issue, SourceTag, TagStatus, TreeNode } fro
 
 // 저장하지 않고 항상 데이터에서 계산하는 값들(상태, 경로 코드, 점검 결과).
 
-export const POWER_PARAM = 'PWR_KW';
-
 export function tagStatus(t: SourceTag): TagStatus {
   if (t.hold) return '보류';
   if (t.assetId && t.param && t.unit) return '연결됨';
@@ -85,9 +83,9 @@ export function linkedTags(d: Data, assetId: string): SourceTag[] {
   return d.tags.filter((t) => t.assetId === assetId && !t.hold);
 }
 
-/** 설비의 순시 전력 값(kW): 연결된 순시 전력 태그의 값 */
-export function assetPower(d: Data, assetId: string): number | null {
-  const t = linkedTags(d, assetId).find((x) => x.param === POWER_PARAM && x.value != null);
+/** 설비의 값: 연결된 해당 파라미터 태그의 값 */
+export function assetValue(d: Data, assetId: string, param: string): number | null {
+  const t = linkedTags(d, assetId).find((x) => x.param === param && x.value != null);
   return t?.value ?? null;
 }
 
@@ -109,10 +107,10 @@ export function codeUsage(d: Data, group: string, code: string): number {
 }
 
 /** 노드 아래 합산 값: 자기 값이 있으면 그 값, 없으면 하위 합 */
-function nodeTotal(d: Data, n: TreeNode): number {
-  const own = n.assetId ? assetPower(d, n.assetId) : null;
+function nodeTotal(d: Data, n: TreeNode, param: string): number {
+  const own = n.assetId ? assetValue(d, n.assetId, param) : null;
   if (own != null) return own * (n.share / 100);
-  return childrenOf(d, n.id, n.view).reduce((s, c) => s + nodeTotal(d, c), 0);
+  return childrenOf(d, n.id, n.view).reduce((s, c) => s + nodeTotal(d, c, param), 0);
 }
 
 export function validate(d: Data): Issue[] {
@@ -122,7 +120,7 @@ export function validate(d: Data): Issue[] {
   // 1) 파라미터·단위가 정해지지 않은 태그 / 설비에 연결되지 않은 태그
   const todo = live.filter((t) => tagStatus(t) === '미정리');
   if (todo.length > 0) {
-    out.push({ id: 'untidy', severity: '경고', title: `파라미터·단위 미지정 태그 ${todo.length}개`, detail: todo.map((t) => t.raw).join(', '), href: '/data', linkText: '코드·태그로' });
+    out.push({ id: 'untidy', severity: '경고', title: `파라미터·단위 미지정 태그 ${todo.length}개`, detail: todo.map((t) => t.raw).join(', '), href: '/tags', linkText: '수집 태그로' });
   }
   const unlinked = live.filter((t) => tagStatus(t) === '정리됨');
   if (unlinked.length > 0) {
@@ -152,7 +150,7 @@ export function validate(d: Data): Issue[] {
   for (const t of live) {
     const def = paramOf(d, t.param)?.unit;
     if (def && t.unit && t.unit !== def) {
-      out.push({ id: `unit:${t.raw}`, severity: '경고', title: `단위 불일치: ${t.raw}`, detail: `${codeLabel(d, 'param', t.param ?? '')} 기본 단위는 ${def}, 현재 ${t.unit}`, href: '/data', linkText: '코드·태그로' });
+      out.push({ id: `unit:${t.raw}`, severity: '경고', title: `단위 불일치: ${t.raw}`, detail: `${codeLabel(d, 'param', t.param ?? '')} 기본 단위는 ${def}, 현재 ${t.unit}`, href: '/tags', linkText: '수집 태그로' });
     }
   }
 
@@ -178,23 +176,28 @@ export function validate(d: Data): Issue[] {
     }
   }
 
-  // 7) 전력계통 합산: 상위 설비 값 vs 하위 합
+  // 7) 합산 점검: 점검 대상 트리에서 상위 설비 값 vs 하위 합 (합산 대상 파라미터마다)
   const tol = d.settings.sumTolerancePct;
-  for (const n of d.nodes.filter((x) => x.view === 'power' && x.assetId)) {
-    const own = assetPower(d, n.assetId!);
-    if (!own) continue;
-    const sub = childrenOf(d, n.id, n.view).reduce((s, c) => s + nodeTotal(d, c), 0);
-    if (sub <= 0) continue;
-    const diff = (Math.abs(own - sub) / own) * 100;
-    if (diff > tol) {
-      out.push({ id: `sum:${n.id}`, severity: '경고', title: `합산 차이 ${diff.toFixed(1)}%: ${nodeCode(d, n)}`, detail: `상위 ${own}kW, 하위 합 ${sub}kW (허용 ${tol}%)`, href: '/tree', linkText: '트리 설계로' });
+  for (const v of d.views.filter((x) => x.sumCheck)) {
+    for (const p of d.codes.filter((c) => c.group === 'param' && c.sum && c.active)) {
+      for (const n of d.nodes.filter((x) => x.view === v.key && x.assetId)) {
+        const own = assetValue(d, n.assetId!, p.code);
+        if (!own) continue;
+        const sub = childrenOf(d, n.id, n.view).reduce((s, c) => s + nodeTotal(d, c, p.code), 0);
+        if (sub <= 0) continue;
+        const diff = (Math.abs(own - sub) / own) * 100;
+        if (diff > tol) {
+          const u = p.unit ?? '';
+          out.push({ id: `sum:${n.id}:${p.code}`, severity: '경고', title: `합산 차이 ${diff.toFixed(1)}%: ${nodeCode(d, n)} (${p.label})`, detail: `상위 ${own}${u}, 하위 합 ${sub}${u} (허용 ${tol}%)`, href: '/tree', linkText: '트리 설계로' });
+        }
+      }
     }
   }
 
   // 8) 사용 중지된 코드를 아직 쓰는 경우
   for (const c of d.codes.filter((x) => !x.active)) {
     const n = codeUsage(d, c.group, c.code);
-    if (n > 0) out.push({ id: `code:${c.group}:${c.code}`, severity: '경고', title: `사용 중지 코드 참조: ${c.code}`, detail: `${n}건이 아직 사용합니다`, href: '/data', linkText: '코드·태그로' });
+    if (n > 0) out.push({ id: `code:${c.group}:${c.code}`, severity: '경고', title: `사용 중지 코드 참조: ${c.code}`, detail: `${n}건이 아직 사용합니다`, href: '/codes', linkText: '코드 관리로' });
   }
 
   return out.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === '오류' ? -1 : 1));
