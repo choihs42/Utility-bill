@@ -2,89 +2,111 @@ import { useState } from 'react';
 import { useApp } from '../store/store';
 import { useAction } from '../components/useAction';
 import { Msg } from '../components/Msg';
-import { ask } from '../components/confirm';
+import { StatusPill, Tabs } from '../components/ui';
 import * as A from '../domain/actions';
-import { childrenOf, pathCode, placementsIn } from '../domain/derive';
-import type { TreeNode } from '../domain/types';
+import { codeLabel, linkedTags, pointName, tagStatus } from '../domain/derive';
 
-export function MapPage() {
+function ByTag() {
   const data = useApp((s) => s.data);
   const { msg, note, exec } = useAction();
-  const [view, setView] = useState('power');
-  const [assetId, setAssetId] = useState(data.assets[0]?.id ?? '');
-  const [nodeId, setNodeId] = useState('');
-  const nodes = data.nodes.filter((n) => n.view === view);
-  const target = nodes.some((n) => n.id === nodeId) ? nodeId : nodes[0]?.id ?? '';
-  const placedIds = new Set(placementsIn(data, view).map((p) => p.assetId));
-  const unplaced = data.assets.filter((a) => !placedIds.has(a.id));
-
-  const row = (n: TreeNode, depth: number) => {
-    const placed = data.placements.filter((p) => p.nodeId === n.id);
-    return (
-      <li key={n.id}>
-        <div className="node" style={{ paddingLeft: depth * 20 }}>
-          <span className="tag">{data.codes.find((c) => c.group === 'node' && c.code === n.type)?.label ?? n.type}</span>
-          <b>{n.label}</b>
-          <code>{pathCode(data, n.id)}</code>
-        </div>
-        {placed.map((p) => {
-          const a = data.assets.find((x) => x.id === p.assetId)!;
-          return (
-            <div key={p.id} className="asset-row" style={{ marginLeft: depth * 20 + 20 }}>
-              <span>{a.name}</span>
-              <code>{a.code}</code>
-              <label>배분율 <input type="number" min={1} max={100} value={p.share} onChange={(e) => exec((d) => A.setShare(d, p.id, Number(e.target.value)))} />%</label>
-              <button className="ghost" onClick={() => ask(`${a.code}의 배치(${pathCode(data, n.id)})를 해제합니다.`) && exec((d) => A.removePlacement(d, p.id))}>해제</button>
-            </div>
-          );
-        })}
-        {childrenOf(data, n.id, view).length > 0 && <ul>{childrenOf(data, n.id, view).map((c) => row(c, depth + 1))}</ul>}
-      </li>
-    );
-  };
-
+  const [q, setQ] = useState('');
+  const [filter, setFilter] = useState<'all' | '정리됨' | '연결됨'>('all');
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [bAsset, setBAsset] = useState('');
+  const ready = data.tags.filter((t) => ['정리됨', '연결됨'].includes(tagStatus(t)));
+  const excluded = data.tags.length - ready.length;
+  const rows = ready.filter((t) => (filter === 'all' || tagStatus(t) === filter) && (!q.trim() || t.raw.toLowerCase().includes(q.trim().toLowerCase())));
+  const allSel = rows.length > 0 && rows.every((t) => sel.has(t.raw));
+  const toggle = (raw: string) => setSel((p) => { const n = new Set(p); if (n.has(raw)) n.delete(raw); else n.add(raw); return n; });
   return (
     <>
-      <header className="ph"><h2>트리 매핑</h2>
-      <p>설비를 트리의 알맞은 위치에 놓습니다. 같은 설비를 전력·조직·공간 트리에 모두 놓을 수 있고, 한 트리의 여러 곳에 놓으면 배분율로 나눕니다.</p></header>
-      <div className="tabs">
-        {data.views.map((v) => (
-          <button key={v.key} className={v.key === view ? 'on' : ''} onClick={() => setView(v.key)}>{v.label}</button>
-        ))}
+      <div className="bar">
+        <input className="search" placeholder="태그 검색" value={q} onChange={(e) => setQ(e.target.value)} />
+        <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
+          <option value="all">전체 {ready.length}</option>
+          <option value="정리됨">연결 대기 {ready.filter((t) => tagStatus(t) === '정리됨').length}</option>
+          <option value="연결됨">연결됨 {ready.filter((t) => tagStatus(t) === '연결됨').length}</option>
+        </select>
+        <span className="grow" />
+        <span className="dim">미정리·보류 {excluded}개는 제외 (코드·태그에서 정리)</span>
       </div>
       <Msg text={msg} note={note} />
-      <div className="card">
-        {nodes.length === 0 ? <p className="dim">이 뷰에는 노드가 없습니다. 먼저 3단계에서 트리를 만드세요.</p> : <ul className="tree">{childrenOf(data, null, view).map((n) => row(n, 0))}</ul>}
-      </div>
-      <div className="card form">
-        <h3>설비 놓기</h3>
-        <select value={assetId} onChange={(e) => setAssetId(e.target.value)}>
-          {data.assets.map((a) => <option key={a.id} value={a.id}>{a.code} · {a.name}{placedIds.has(a.id) ? '' : ' (미배치)'}</option>)}
-        </select>
-        <span>→</span>
-        <select value={target} onChange={(e) => setNodeId(e.target.value)}>
-          {nodes.map((n) => <option key={n.id} value={n.id}>{pathCode(data, n.id)}</option>)}
-        </select>
-        <button disabled={!target} onClick={() => exec((d) => A.placeAsset(d, assetId, target))}>놓기</button>
-        {unplaced.length > 0 && <p className="dim full">이 뷰에 아직 없는 설비: {unplaced.map((a) => a.code).join(', ')}</p>}
-      </div>
-      <div className="card">
-        <h3>설비별 경로 (뷰 비교)</h3>
+      {sel.size > 0 && (
+        <div className="bar bulk">
+          <b>{sel.size}개 선택</b>
+          <select value={bAsset} onChange={(e) => setBAsset(e.target.value)}>
+            <option value="">설비 선택</option>
+            {data.assets.map((a) => <option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}
+          </select>
+          <button disabled={!bAsset} onClick={() => exec((d) => A.bulkLinkTags(d, [...sel], bAsset)) && setBAsset('')}>연결</button>
+          <button className="ghost" onClick={() => exec((d) => A.bulkLinkTags(d, [...sel], null))}>연결 해제</button>
+          <button className="ghost" onClick={() => setSel(new Set())}>선택 해제</button>
+        </div>
+      )}
+      <div className="card flush">
         <table>
-          <thead><tr><th>설비</th>{data.views.map((v) => <th key={v.key}>{v.label}</th>)}</tr></thead>
+          <thead>
+            <tr>
+              <th className="cb"><input type="checkbox" checked={allSel} onChange={() => setSel(allSel ? new Set() : new Set(rows.map((t) => t.raw)))} /></th>
+              <th>원천 태그</th><th>파라미터</th><th>단위</th><th>설비</th><th>포인트명</th><th>포인트 ID</th><th>상태</th>
+            </tr>
+          </thead>
           <tbody>
-            {data.assets.map((a) => (
-              <tr key={a.id}>
-                <td>{a.code}</td>
-                {data.views.map((v) => {
-                  const ps = placementsIn(data, v.key).filter((p) => p.assetId === a.id);
-                  return <td key={v.key}>{ps.length ? ps.map((p) => <div key={p.id}><code>{pathCode(data, p.nodeId)}</code>{ps.length > 1 && ` (${p.share}%)`}</div>) : <span className="dim">미배치</span>}</td>;
-                })}
+            {rows.length === 0 && <tr><td colSpan={8} className="empty">연결할 태그가 없습니다.</td></tr>}
+            {rows.map((t) => (
+              <tr key={t.raw} className={sel.has(t.raw) ? 'sel' : ''}>
+                <td className="cb"><input type="checkbox" checked={sel.has(t.raw)} onChange={() => toggle(t.raw)} /></td>
+                <td><code>{t.raw}</code></td>
+                <td>{codeLabel(data, 'param', t.param ?? '')}</td>
+                <td className="dim">{t.unit}</td>
+                <td>
+                  <select value={t.assetId ?? ''} onChange={(e) => exec((d) => A.linkTag(d, t.raw, e.target.value || null))}>
+                    <option value="">(미연결)</option>
+                    {data.assets.map((a) => <option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}
+                  </select>
+                </td>
+                <td>{pointName(data, t)}</td>
+                <td className="dim">{t.ptId || '-'}</td>
+                <td><StatusPill status={tagStatus(t)} /></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+    </>
+  );
+}
+
+function ByAsset() {
+  const data = useApp((s) => s.data);
+  return (
+    <div className="card flush">
+      <table>
+        <thead><tr><th>설비</th><th>유형</th><th className="num">포인트</th><th>연결된 포인트</th></tr></thead>
+        <tbody>
+          {data.assets.map((a) => {
+            const ts = linkedTags(data, a.id);
+            return (
+              <tr key={a.id}>
+                <td><code>{a.code}</code> {a.name}</td>
+                <td className="dim">{codeLabel(data, 'asset', a.type)}</td>
+                <td className="num">{ts.length}</td>
+                <td>{ts.length ? ts.map((t) => <span key={t.raw} className="chip">{codeLabel(data, 'param', t.param ?? '')} <code>{t.raw}</code></span>) : <span className="dim">없음</span>}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function MapPage() {
+  const [tab, setTab] = useState<'tag' | 'asset'>('tag');
+  return (
+    <>
+      <Tabs items={[{ key: 'tag', label: '태그별' }, { key: 'asset', label: '설비별' }]} value={tab} onChange={setTab} />
+      {tab === 'tag' ? <ByTag /> : <ByAsset />}
     </>
   );
 }

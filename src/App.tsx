@@ -1,8 +1,7 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { CodesPage } from './pages/CodesPage';
-import { ParamsPage } from './pages/ParamsPage';
-import { TreeDesignPage } from './pages/TreeDesignPage';
+import { DataPage } from './pages/DataPage';
+import { TreePage } from './pages/TreePage';
 import { MapPage } from './pages/MapPage';
 import { CheckPage } from './pages/CheckPage';
 
@@ -11,10 +10,9 @@ export default function App() {
     <HashRouter>
       <Routes>
         <Route element={<Layout />}>
-          <Route index element={<Navigate to="/codes" replace />} />
-          <Route path="codes" element={<CodesPage />} />
-          <Route path="params" element={<ParamsPage />} />
-          <Route path="tree" element={<TreeDesignPage />} />
+          <Route index element={<Navigate to="/data" replace />} />
+          <Route path="data" element={<DataPage />} />
+          <Route path="tree" element={<TreePage />} />
           <Route path="map" element={<MapPage />} />
           <Route path="check" element={<CheckPage />} />
         </Route>

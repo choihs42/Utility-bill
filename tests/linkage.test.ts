@@ -2,209 +2,226 @@ import { describe, expect, it } from 'vitest';
 import { makeStore } from '../src/store/store';
 import * as A from '../src/domain/actions';
 import { parseTagCsv } from '../src/domain/csv';
-import { codeUsage, fulfillment, pathCode, validate } from '../src/domain/derive';
+import { codeUsage, pathCode, pointName, tagStatus, validate } from '../src/domain/derive';
+import type { Data } from '../src/domain/types';
 
-// 화면 간 연동(설비·템플릿 → 포인트 매핑 → 트리 설계 → 트리 매핑 → 점검)을 같은 데이터로 확인한다.
+// 화면 간 연동(코드·태그 → 트리 설계 → 포인트 매핑 → 점검)을 같은 데이터로 확인한다.
 const setup = () => {
   const store = makeStore({ persist: false });
   const run = (fn: Parameters<ReturnType<typeof store.getState>['run']>[0]) => store.getState().run(fn).error;
   const data = () => store.getState().data;
   return { store, run, data };
 };
-const ids = (d: ReturnType<ReturnType<typeof setup>['data']>) => validate(d).map((i) => i.id);
-const tag = (d: ReturnType<ReturnType<typeof setup>['data']>, raw: string) => d.tags.find((t) => t.raw === raw)!;
-const asset = (d: ReturnType<ReturnType<typeof setup>['data']>, code: string) => d.assets.find((a) => a.code === code)!;
+const ids = (d: Data) => validate(d).map((i) => i.id);
+const tag = (d: Data, raw: string) => d.tags.find((t) => t.raw === raw)!;
+const status = (d: Data, raw: string) => tagStatus(tag(d, raw));
 
-describe('포인트 매핑', () => {
-  it('승인은 이름·설비·항목·단위가 모두 있어야 하고, 승인하면 바로 설비 항목에 연결된다', () => {
+describe('수집 태그', () => {
+  it('상태는 입력 내용에서 계산된다(미정리 → 정리됨 → 연결됨, 보류)', () => {
     const { run, data } = setup();
-    expect(run((d) => A.approveTag(d, 'CP1_FLW'))).toMatch(/단위/);
-    expect(run((d) => A.approveTag(d, 'XYZ_T3'))).toMatch(/포인트명/);
-    expect(ids(data())).toContain('unit:CP1_FLW');
+    expect(['CP1_FLW', 'CP1_RUN', 'CP1_KW', 'XYZ_T3'].map((r) => status(data(), r))).toEqual(['미정리', '정리됨', '연결됨', '보류']);
     run((d) => A.updateTag(d, 'CP1_FLW', { unit: 'Nm3/min' }));
-    expect(run((d) => A.approveTag(d, 'CP1_FLW'))).toBeNull();
-    expect(tag(data(), 'CP1_FLW').ptId).toMatch(/^PT-\d{6}$/);
-    run((d) => A.approveTag(d, 'CP1_RUN'));
-    expect(fulfillment(data(), asset(data(), 'CP1')).ok).toBe(true);
-    expect(ids(data()).filter((i) => i.includes(':a2:') || i === 'unit:CP1_FLW')).toEqual([]);
+    expect(status(data(), 'CP1_FLW')).toBe('정리됨');
+    run((d) => A.linkTag(d, 'CP1_FLW', 'a2'));
+    expect(status(data(), 'CP1_FLW')).toBe('연결됨');
   });
 
-  it('같은 설비 항목에 둘째 태그는 승인할 수 없고, 먼저 것을 보류하면 가능하다', () => {
+  it('파라미터를 바꾸면 비어 있거나 이전 기본값이던 단위가 새 기본 단위로 맞춰진다', () => {
     const { run, data } = setup();
-    run((d) => A.importTags(d, [{ raw: 'CP1_KW2', device: 'GW1', assetCode: 'CP1', slot: '순시 전력', unit: 'kW', name: 'CP-01 순시 전력(보조)' }]));
-    expect(run((d) => A.approveTag(d, 'CP1_KW2'))).toMatch(/이미 CP1_KW/);
-    run((d) => A.holdTag(d, 'CP1_KW'));
-    expect(run((d) => A.approveTag(d, 'CP1_KW2'))).toBeNull();
-    expect(fulfillment(data(), asset(data(), 'CP1')).slots[0].tag?.raw).toBe('CP1_KW2');
+    run((d) => A.updateTag(d, 'CP1_FLW', { param: 'PRS_BAR' }));
+    expect(tag(data(), 'CP1_FLW').unit).toBe('bar');
+    run((d) => A.updateTag(d, 'CP1_FLW', { unit: 'kW' }));
+    run((d) => A.updateTag(d, 'CP1_FLW', { param: 'FLW_NM3' }));
+    expect(tag(data(), 'CP1_FLW').unit).toBe('kW');
+    expect(ids(data())).toContain('unit:CP1_FLW');
+    expect(run((d) => A.updateTag(d, 'CP1_FLW', { param: 'NOPE' }))).toMatch(/파라미터/);
   });
 
-  it('보류하면 연결이 풀려 점검에 다시 나타나고, 승인된 태그의 설비를 바꾸면 승인이 해제된다', () => {
+  it('가져오기는 코드·코드명·약자로 파라미터를 찾고 중복을 건너뛴다', () => {
     const { run, data } = setup();
-    run((d) => A.holdTag(d, 'CP1_PRS'));
-    expect(ids(data())).toContain('slot:a2:토출 압력');
-    run((d) => A.updateTag(d, 'RM1_KWH_01', { assetId: 'a5' }));
-    const t = tag(data(), 'RM1_KWH_01');
-    expect(t.status).toBe('제안');
-    expect(t.slot).toBeNull();
-    expect(ids(data())).toContain('slot:a1:누적 전력량');
-  });
-
-  it('일괄 승인은 입력이 덜 된 태그를 남기고, 일괄 수정은 하나라도 오류면 전체를 취소한다', () => {
-    const { run, data } = setup();
-    run((d) => A.approveAllReady(d));
-    expect(['FAN1_KW', 'FAN1_A', 'PMP1_KW', 'CP1_RUN'].every((r) => tag(data(), r).status === '승인')).toBe(true);
-    expect(tag(data(), 'CP1_FLW').status).toBe('제안');
-    expect(tag(data(), 'XYZ_T3').status).toBe('보류');
-    expect(run((d) => A.bulkUpdateTags(d, ['CP1_FLW', 'XYZ_T3'], { slot: '토출 압력' }))).toMatch(/없는 항목/);
-    expect(tag(data(), 'CP1_FLW').slot).toBe('토출 유량');
-    expect(run((d) => A.bulkUpdateTags(d, ['CP1_FLW'], { unit: 'Nm3/min' }))).toBeNull();
-    expect(tag(data(), 'CP1_FLW').unit).toBe('Nm3/min');
-  });
-
-  it('가져오기는 중복을 건너뛰고 약어 사전으로 빈 칸을 채운다', () => {
-    const { run, data } = setup();
-    const rows = parseTagCsv('원천 태그,장치\n# 메모\nCP1_KW,GW1\nPMP1_KW_B\tGW2\nZZ9_TMP,GW2');
-    expect(rows.map((r) => r.raw)).toEqual(['CP1_KW', 'PMP1_KW_B', 'ZZ9_TMP']);
+    const rows = parseTagCsv('원천 태그,장치,파라미터,단위\n# 메모\nCP1_KW,GW1\nCP2_KW,GW1,순시 전력\nCP2_PRS\tGW1\tPRS\nCP2_X,GW1,없는항목');
+    expect(rows.map((r) => r.raw)).toEqual(['CP1_KW', 'CP2_KW', 'CP2_PRS', 'CP2_X']);
     expect(run((d) => A.importTags(d, rows))).toBeNull();
-    const n = data().tags.length;
-    expect(n).toBe(14);
-    const b = tag(data(), 'PMP1_KW_B');
-    expect([b.assetId, b.slot, b.unit, b.name, b.status]).toEqual(['a5', '순시 전력', 'kW', '냉각수 펌프 순시 전력', '제안']);
-    expect(tag(data(), 'ZZ9_TMP').assetId).toBeNull();
+    expect(data().tags).toHaveLength(15);
+    expect([tag(data(), 'CP2_KW').param, tag(data(), 'CP2_KW').unit]).toEqual(['PWR_KW', 'kW']);
+    expect([tag(data(), 'CP2_PRS').param, tag(data(), 'CP2_PRS').unit]).toEqual(['PRS_BAR', 'bar']);
+    expect(status(data(), 'CP2_X')).toBe('미정리');
     expect(run((d) => A.importTags(d, rows))).toMatch(/새로 추가할/);
   });
 
-  it('약어 사전은 이미 입력된 값을 바꾸지 않고, 약어 형식을 검사한다', () => {
+  it('일괄 수정은 하나라도 오류면 전체를 취소한다', () => {
     const { run, data } = setup();
-    run((d) => A.updateTag(d, 'FAN1_KW', { unit: 'kWh' }));
-    run((d) => A.applyAliases(d));
-    expect(tag(data(), 'FAN1_KW').unit).toBe('kWh');
-    expect(run((d) => A.addAlias(d, 'asset', 'cp1', { assetId: 'a2' }))).toMatch(/이미/);
-    expect(run((d) => A.addAlias(d, 'slot', 'A_B', { slot: '전류' }))).toMatch(/밑줄/);
-    expect(run((d) => A.addAlias(d, 'slot', 'TMP', { slot: '없는 항목' }))).toMatch(/항목/);
+    expect(run((d) => A.bulkUpdateTags(d, ['FAN1_KW', 'PMP1_KW'], { unit: 'kWh' }))).toBeNull();
+    expect(ids(data())).toContain('unit:PMP1_KW');
+    expect(run((d) => A.bulkUpdateTags(d, ['FAN1_A', 'PMP1_KW'], { unit: 'xx' }))).toMatch(/단위/);
+    expect(tag(data(), 'FAN1_A').unit).toBe('A');
   });
 });
 
-describe('설비와 템플릿', () => {
-  it('설비 코드를 바꿔도 태그 연결과 배치가 유지된다(내부 ID 참조)', () => {
+describe('포인트 매핑', () => {
+  it('파라미터·단위가 있어야 연결할 수 있고, 연결하면 포인트 ID와 포인트명이 생긴다', () => {
     const { run, data } = setup();
-    expect(run((d) => A.addAsset(d, 'CP1', '중복', 'COMP', 'ELEC'))).toMatch(/이미/);
-    expect(run((d) => A.updateAsset(d, 'a2', 'CP9', '컴프레서 CP-09', 'COMP', 'ELEC'))).toBeNull();
-    expect(fulfillment(data(), asset(data(), 'CP9')).slots[0].tag?.raw).toBe('CP1_KW');
-    expect(data().placements.some((p) => p.assetId === 'a2')).toBe(true);
-    expect(run((d) => A.updateAsset(d, 'a2', 'CP9', '컴프레서', 'FAN', 'ELEC'))).toMatch(/유형/);
+    expect(run((d) => A.linkTag(d, 'CP1_FLW', 'a2'))).toMatch(/파라미터와 단위/);
+    run((d) => A.updateTag(d, 'CP1_FLW', { unit: 'Nm3/min' }));
+    expect(run((d) => A.linkTag(d, 'CP1_FLW', 'a2'))).toBeNull();
+    expect(tag(data(), 'CP1_FLW').ptId).toBe('PT-000111');
+    expect(pointName(data(), tag(data(), 'CP1_FLW'))).toBe('컴프레서 CP-01 유량');
+    run((d) => A.linkTag(d, 'CP1_FLW', null));
+    expect(tag(data(), 'CP1_FLW').ptId).toBe('PT-000111');
+    expect(status(data(), 'CP1_FLW')).toBe('정리됨');
   });
 
-  it('새 설비는 삭제할 수 있고, 태그나 배치가 있는 설비는 삭제할 수 없다', () => {
+  it('같은 설비에 같은 파라미터는 연결할 수 없고, 복수 허용 파라미터는 가능하다', () => {
     const { run, data } = setup();
-    expect(run((d) => A.deleteAsset(d, 'a2'))).toMatch(/태그/);
-    run((d) => A.addAsset(d, 'CP2', '컴프레서 CP-02', 'COMP', 'ELEC'));
-    const id = asset(data(), 'CP2').id;
-    expect(ids(data())).toContain(`slot:${id}:토출 압력`);
-    expect(run((d) => A.deleteAsset(d, id))).toBeNull();
+    run((d) => A.importTags(d, [{ raw: 'CP1_KW2', device: 'GW1', param: 'PWR_KW', unit: '' }, { raw: 'FAN1_B', device: 'GW2', param: 'A', unit: '' }]));
+    expect(run((d) => A.linkTag(d, 'CP1_KW2', 'a2'))).toMatch(/이미 CP1_KW/);
+    run((d) => A.linkTag(d, 'FAN1_A', 'a3'));
+    expect(run((d) => A.linkTag(d, 'FAN1_B', 'a3'))).toBeNull();
+    expect(ids(data()).some((i) => i.startsWith('dup:'))).toBe(false);
+    expect(run((d) => A.updateTag(d, 'CP1_KW2', { param: 'CUR_A' }))).toBeNull();
   });
 
-  it('템플릿 항목을 추가하면 해당 유형 설비에 필수 항목 점검이 생기고, 필수를 끄면 사라진다', () => {
+  it('연결된 태그는 파라미터·단위를 비울 수 없고, 보류하면 연결이 풀린다', () => {
     const { run, data } = setup();
-    run((d) => A.addSlot(d, 'COMP', '토출 온도', true, 'INST'));
-    expect(ids(data())).toContain('slot:a2:토출 온도');
-    expect(run((d) => A.addSlot(d, 'COMP', '토출 온도', true, 'INST'))).toMatch(/이미/);
-    run((d) => A.toggleSlotReq(d, 'COMP', '토출 온도'));
-    expect(ids(data())).not.toContain('slot:a2:토출 온도');
-    expect(run((d) => A.removeSlot(d, 'COMP', '토출 압력'))).toMatch(/태그/);
-    expect(run((d) => A.removeSlot(d, 'COMP', '토출 온도'))).toBeNull();
-  });
-});
-
-describe('계통 트리 설계', () => {
-  it('노드를 추가하면 경로 코드가 자동 생성되고, 같은 상위 아래 중복 코드는 막는다', () => {
-    const { run, data } = setup();
-    expect(run((d) => A.addNode(d, 'power', 'pw2', 'MCC3', 'MCC-3', 'PANEL'))).toBeNull();
-    expect(pathCode(data(), data().nodes.at(-1)!.id)).toBe('TR1_LV1_MCC3');
-    expect(run((d) => A.addNode(d, 'power', 'pw2', 'MCC3', 'MCC-3b', 'PANEL'))).toMatch(/이미/);
-    expect(run((d) => A.addNode(d, 'power', 'pw2', 'bad code!', 'x', 'PANEL'))).toMatch(/코드/);
-    expect(run((d) => A.addNode(d, 'power', 'og1', 'X1', 'x', 'PANEL'))).toMatch(/같은 뷰/);
+    expect(run((d) => A.updateTag(d, 'CP1_KW', { param: null }))).toMatch(/비울 수 없습니다/);
+    expect(run((d) => A.updateTag(d, 'CP1_KW', { unit: '' }))).toMatch(/비울 수 없습니다/);
+    run((d) => A.setHold(d, ['CP1_PRS'], true));
+    expect(tag(data(), 'CP1_PRS').assetId).toBeNull();
+    expect(status(data(), 'CP1_PRS')).toBe('보류');
+    expect(run((d) => A.linkTag(d, 'XYZ_T3', 'a2'))).toMatch(/보류/);
   });
 
-  it('코드를 바꾸거나 노드를 옮기면 하위 경로가 함께 바뀌고, 순환 이동은 막는다', () => {
+  it('일괄 연결은 하나라도 오류면 전체를 취소한다', () => {
     const { run, data } = setup();
-    run((d) => A.updateNode(d, 'pw2', 'pw1', 'LVA', '저압반 A', 'PANEL'));
-    expect(pathCode(data(), 'pw3')).toBe('TR1_LVA_MCC1');
-    run((d) => A.updateNode(d, 'pw4', 'pw1', 'MCC2', 'MCC-2', 'PANEL'));
-    expect(pathCode(data(), 'pw4')).toBe('TR1_MCC2');
-    expect(run((d) => A.updateNode(d, 'pw1', 'pw3', 'TR1', 'TR-1', 'TRANS'))).toMatch(/하위 노드 아래/);
-  });
-
-  it('하위 노드나 배치된 설비가 있는 노드는 삭제할 수 없다', () => {
-    const { run, data } = setup();
-    expect(run((d) => A.deleteNode(d, 'pw2'))).toMatch(/하위/);
-    expect(run((d) => A.deleteNode(d, 'pw3'))).toMatch(/배치/);
-    run((d) => A.addNode(d, 'power', 'pw2', 'MCC3', 'MCC-3', 'PANEL'));
-    expect(run((d) => A.deleteNode(d, data().nodes.at(-1)!.id))).toBeNull();
+    expect(run((d) => A.bulkLinkTags(d, ['FAN1_KW', 'PMP1_KW'], 'a3'))).toMatch(/이미 FAN1_KW/);
+    expect(tag(data(), 'FAN1_KW').assetId).toBeNull();
+    expect(run((d) => A.bulkLinkTags(d, ['FAN1_KW', 'FAN1_A'], 'a3'))).toBeNull();
+    expect(run((d) => A.bulkLinkTags(d, ['FAN1_KW', 'FAN1_A'], null))).toBeNull();
+    expect(tag(data(), 'FAN1_A').assetId).toBeNull();
   });
 });
 
-describe('트리 매핑과 점검', () => {
-  it('배치는 바로 반영되고, 같은 설비를 세 뷰에 동시에 둘 수 있다', () => {
+describe('코드', () => {
+  it('로컬 코드는 LOC_ 접두와 형식·중복을 검사하고, 코드명·약자·설명은 수정할 수 있다', () => {
     const { run, data } = setup();
-    run((d) => A.placeAsset(d, 'a3', 'pw3'));
-    expect(data().placements.at(-1)?.nodeId).toBe('pw3');
-    expect(run((d) => A.placeAsset(d, 'a3', 'pw3'))).toMatch(/이미/);
-    const views = data().placements.filter((p) => p.assetId === 'a1').map((p) => data().nodes.find((n) => n.id === p.nodeId)!.view);
-    expect(new Set(views)).toEqual(new Set(['power', 'org', 'space']));
+    expect(run((d) => A.addCode(d, 'param', 'TEMP_C', '온도'))).toMatch(/LOC_/);
+    expect(run((d) => A.addCode(d, 'param', 'LOC_temp', '온도'))).toMatch(/형식/);
+    expect(run((d) => A.addCode(d, 'param', 'LOC_PWR_KW', ''))).toMatch(/코드명/);
+    expect(run((d) => A.addCode(d, 'energy', 'LOC_STEAM', '스팀'))).toMatch(/이미/);
+    expect(run((d) => A.addCode(d, 'param', 'LOC_TEMP', '온도', { abbr: 'TMP', unit: 'kW', multi: true }))).toBeNull();
+    const c = data().codes.find((x) => x.code === 'LOC_TEMP')!;
+    expect([c.scope, c.abbr, c.multi]).toEqual(['로컬', 'TMP', true]);
+    run((d) => A.updateCode(d, 'param', 'LOC_TEMP', { label: '설비 온도', desc: '표면 온도' }));
+    expect(data().codes.find((x) => x.code === 'LOC_TEMP')?.desc).toBe('표면 온도');
+    expect(run((d) => A.updateCode(d, 'param', 'LOC_TEMP', { label: ' ' }))).toMatch(/비울 수 없/);
   });
 
-  it('같은 뷰에 나눠 놓으면 균등 배분되고, 합이 100이 아니면 점검에 오류가 뜬다', () => {
-    const { run, data } = setup();
-    run((d) => A.placeAsset(d, 'a1', 'pw4'));
-    expect(data().placements.filter((p) => p.assetId === 'a1' && p.nodeId.startsWith('pw')).map((p) => p.share)).toEqual([50, 50]);
-    expect(ids(data()).some((i) => i.startsWith('share:'))).toBe(false);
-    run((d) => A.setShare(d, 'pl-2', 70));
-    expect(ids(data())).toContain('share:power:a1');
-  });
-
-  it('전력계통 합산 경고는 FAN1을 승인·배치하면 사라지고, 허용 오차 설정을 따른다', () => {
-    const { run, data } = setup();
-    expect(validate(data()).find((i) => i.id === 'sum:pl-1')?.title).toContain('3.0%');
-    run((d) => A.setTolerance(d, 5));
-    expect(ids(data())).not.toContain('sum:pl-1');
-    run((d) => A.setTolerance(d, 2));
-    run((d) => A.approveAllReady(d));
-    run((d) => A.placeAsset(d, 'a3', 'pw3'));
-    expect(ids(data())).not.toContain('sum:pl-1');
-    run((d) => A.removePlacement(d, data().placements.at(-1)!.id));
-    expect(ids(data())).toContain('sum:pl-1');
-    expect(run((d) => A.setTolerance(d, 80))).toMatch(/0~50/);
-  });
-});
-
-describe('코드와 되돌리기', () => {
-  it('사용 중인 코드를 중지하면 점검 경고가 나온다', () => {
+  it('사용 중인 코드를 중지하면 점검 경고가 나오고, 중지된 파라미터는 지정할 수 없다', () => {
     const { run, data } = setup();
     expect(codeUsage(data(), 'unit', 'kW')).toBeGreaterThan(0);
-    expect(codeUsage(data(), 'kind', 'INST')).toBeGreaterThan(0);
+    expect(codeUsage(data(), 'param', 'PWR_KW')).toBe(6);
     run((d) => A.toggleCode(d, 'unit', 'kW'));
     expect(ids(data())).toContain('code:unit:kW');
+    run((d) => A.toggleCode(d, 'param', 'CUR_A'));
+    expect(run((d) => A.updateTag(d, 'CP1_FLW', { param: 'CUR_A' }))).toMatch(/사용할 수 없는/);
     run((d) => A.toggleCode(d, 'unit', 'kW'));
     expect(ids(data())).not.toContain('code:unit:kW');
   });
+});
 
-  it('로컬 코드는 LOC_ 접두와 형식·중복을 검사한다', () => {
+describe('설비', () => {
+  it('설비 코드를 바꿔도 연결과 트리 배치가 유지된다(내부 ID 참조)', () => {
+    const { run, data } = setup();
+    expect(run((d) => A.addAsset(d, { code: 'CP1', name: '중복', type: 'COMP', energy: 'ELEC' }))).toMatch(/이미/);
+    expect(run((d) => A.updateAsset(d, 'a2', { code: 'CP9' }))).toBeNull();
+    expect(tag(data(), 'CP1_KW').assetId).toBe('a2');
+    expect(pathCode(data(), 'pw6')).toBe('TR1_LV1_MCC2_CP9');
+    expect(pathCode(data(), 'og6')).toBe('압연공장_유틸리티_CP9');
+  });
+
+  it('연결된 포인트나 트리 배치가 있는 설비는 삭제할 수 없다', () => {
     const { run } = setup();
-    expect(run((d) => A.addCode(d, 'energy', 'STEAM2', '스팀2'))).toMatch(/LOC_/);
-    expect(run((d) => A.addCode(d, 'energy', 'LOC_steam', '스팀'))).toMatch(/형식/);
-    expect(run((d) => A.addCode(d, 'energy', 'LOC_STEAM', '스팀'))).toMatch(/이미/);
-    expect(run((d) => A.addCode(d, 'kind', 'LOC_X', 'x'))).toMatch(/고정/);
-    expect(run((d) => A.addCode(d, 'energy', 'LOC_HOTW', '온수'))).toBeNull();
+    expect(run((d) => A.deleteAsset(d, 'a2'))).toMatch(/포인트/);
+    expect(run((d) => A.deleteAsset(d, 'a6'))).toMatch(/트리/);
+    run((d) => A.addAsset(d, { code: 'CP2', name: '컴프레서 CP-02', type: 'COMP', energy: 'ELEC' }));
+    expect(run((d) => A.deleteAsset(d, 'a9'))).toBeNull();
+  });
+});
+
+describe('트리 설계', () => {
+  it('설비를 놓으면 설비 코드로 경로가 만들어지고, 중복·순환은 막는다', () => {
+    const { run, data } = setup();
+    expect(run((d) => A.placeAsset(d, 'power', 'a3', 'pw3'))).toBeNull();
+    expect(pathCode(data(), 'nd-1')).toBe('TR1_LV1_MCC1_FAN1');
+    expect(run((d) => A.placeAsset(d, 'power', 'a3', 'pw3'))).toMatch(/이미/);
+    expect(run((d) => A.placeAsset(d, 'power', 'a0', 'pw5'))).toMatch(/자기 자신/);
+    expect(run((d) => A.placeAsset(d, 'org', 'a3', 'pw3'))).toMatch(/같은 트리/);
+  });
+
+  it('그룹은 조직·공간 트리에서만 만들 수 있고 형식·중복을 검사한다', () => {
+    const { run, data } = setup();
+    expect(run((d) => A.addGroup(d, 'power', null, 'G1', 'g', 'FAC'))).toMatch(/그룹을 만들 수 없습니다/);
+    expect(run((d) => A.addGroup(d, 'org', 'og1', '설비과', '설비과', 'PROC'))).toBeNull();
+    expect(pathCode(data(), 'nd-1')).toBe('압연공장_설비과');
+    expect(run((d) => A.addGroup(d, 'org', 'og1', '설비과', 'x', 'PROC'))).toMatch(/이미/);
+    expect(run((d) => A.addGroup(d, 'org', 'og1', 'bad code', 'x', 'PROC'))).toMatch(/코드/);
+    expect(run((d) => A.addGroup(d, 'org', 'og1', 'ok1', 'x', 'NOPE'))).toMatch(/유형/);
+  });
+
+  it('노드를 옮기거나 코드를 바꾸면 하위 경로가 함께 바뀌고, 순환 이동과 하위가 있는 삭제는 막는다', () => {
+    const { run, data } = setup();
+    run((d) => A.updateNode(d, 'pw4', { parent: 'pw1' }));
+    expect(pathCode(data(), 'pw6')).toBe('TR1_MCC2_CP1');
+    run((d) => A.updateNode(d, 'og2', { code: '압연' }));
+    expect(pathCode(data(), 'og5')).toBe('압연공장_압연_압연1라인_RM1');
+    expect(run((d) => A.updateNode(d, 'pw1', { parent: 'pw3' }))).toMatch(/하위 노드 아래/);
+    expect(run((d) => A.deleteNode(d, 'pw2'))).toMatch(/하위/);
+    expect(run((d) => A.deleteNode(d, 'pw5'))).toBeNull();
+  });
+
+  it('같은 설비를 세 트리에 놓을 수 있고, 한 트리에서 나누면 균등 배분되며 합이 틀리면 오류가 뜬다', () => {
+    const { run, data } = setup();
+    expect(['power', 'org', 'space'].every((v) => data().nodes.some((n) => n.view === v && n.assetId === 'a1'))).toBe(true);
+    run((d) => A.placeAsset(d, 'power', 'a1', 'pw4'));
+    expect(data().nodes.filter((n) => n.view === 'power' && n.assetId === 'a1').map((n) => n.share)).toEqual([50, 50]);
+    expect(ids(data()).some((i) => i.startsWith('share:'))).toBe(false);
+    run((d) => A.setShare(d, 'pw5', 70));
+    expect(ids(data())).toContain('share:power:a1');
+    expect(run((d) => A.setShare(d, 'og1', 50))).toMatch(/설비 노드/);
+  });
+});
+
+describe('점검', () => {
+  it('처음 샘플에서 미정리·미연결 태그, 포인트 없는 설비, 미배치를 알려준다(구조용 설비는 제외)', () => {
+    const { data } = setup();
+    const got = ids(data());
+    expect(got).toEqual(expect.arrayContaining(['untidy', 'unlinked', 'nopoint:a3', 'nopoint:a5', 'cov:power:a3', 'cov:power:a4', 'cov:power:a5']));
+    expect(got).not.toContain('nopoint:a6');
+    expect(validate(data()).filter((i) => i.severity === '오류')).toHaveLength(0);
+  });
+
+  it('전력계통 합산 경고는 FAN1을 연결·배치하면 사라지고, 허용 오차 설정을 따른다', () => {
+    const { run, data } = setup();
+    expect(validate(data()).find((i) => i.id === 'sum:pw1')?.title).toContain('3.0%');
+    run((d) => A.setTolerance(d, 5));
+    expect(ids(data())).not.toContain('sum:pw1');
+    run((d) => A.setTolerance(d, 2));
+    run((d) => A.linkTag(d, 'FAN1_KW', 'a3'));
+    run((d) => A.placeAsset(d, 'power', 'a3', 'pw3'));
+    expect(ids(data())).not.toContain('sum:pw1');
+    expect(ids(data())).not.toContain('nopoint:a3');
+    run((d) => A.deleteNode(d, 'nd-1'));
+    expect(ids(data())).toContain('sum:pw1');
+    expect(run((d) => A.setTolerance(d, 80))).toMatch(/0~50/);
   });
 
   it('변경 이력이 남고, 되돌리기로 직전 상태를 복원한다', () => {
     const { store, run, data } = setup();
-    run((d) => A.approveAllReady(d));
-    expect(data().log[0].text).toContain('일괄 승인');
-    expect(tag(data(), 'FAN1_KW').status).toBe('승인');
+    run((d) => A.updateTag(d, 'CP1_FLW', { unit: 'Nm3/min' }));
+    expect(data().log[0].text).toContain('태그 수정');
+    expect(status(data(), 'CP1_FLW')).toBe('정리됨');
     store.getState().undo();
-    expect(tag(data(), 'FAN1_KW').status).toBe('제안');
+    expect(status(data(), 'CP1_FLW')).toBe('미정리');
     expect(store.getState().past).toHaveLength(0);
   });
 });
