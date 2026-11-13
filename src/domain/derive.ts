@@ -1,9 +1,8 @@
 import type { Asset, Data, Issue, Placement, SourceTag, TreeNode } from './types';
 
-// 저장하지 않고 항상 데이터에서 계산하는 값들(경로 코드, 충족도, 검증 결과).
+// 저장하지 않고 항상 데이터에서 계산하는 값들(경로 코드, 충족도, 점검 결과).
 
 export const SLOT_POWER = '순시 전력';
-export const SUM_TOLERANCE_PCT = 2;
 
 export function nodeById(d: Data, id: string): TreeNode | undefined {
   return d.nodes.find((n) => n.id === id);
@@ -43,15 +42,24 @@ export function templateSlots(d: Data, a: Asset) {
   return d.templates.find((t) => t.type === a.type)?.slots ?? [];
 }
 
-/** 해당 설비의 슬롯에 들어갈 수 있는 후보: 승인된 표준 포인트 중 설비·슬롯이 일치하는 것 */
-export function candidates(d: Data, a: Asset, slot: string): SourceTag[] {
-  return d.tags.filter((t) => t.status === '승인' && t.assetCode === a.code && t.slot === slot);
+export function slotsOfType(d: Data, type: string) {
+  return d.templates.find((t) => t.type === type)?.slots ?? [];
+}
+
+/** 태그 한 줄의 입력이 모두 채워졌는지 (승인 가능 조건) */
+export function isComplete(t: SourceTag): boolean {
+  return Boolean(t.name && t.assetId && t.slot && t.unit);
+}
+
+/** 같은 설비 항목에 이미 승인된 다른 태그 */
+export function slotOwner(d: Data, assetId: string, slot: string, exceptRaw?: string): SourceTag | undefined {
+  return d.tags.find((t) => t.status === '승인' && t.assetId === assetId && t.slot === slot && t.raw !== exceptRaw);
 }
 
 export interface SlotState {
   item: string;
   req: boolean;
-  raw: string | null;
+  kind: string;
   tag: SourceTag | null;
 }
 
@@ -62,18 +70,20 @@ export interface Fulfillment {
   ok: boolean;
 }
 
+/** 승인된 태그가 설비 항목에 연결된 상태를 템플릿 기준으로 계산 */
 export function fulfillment(d: Data, a: Asset): Fulfillment {
-  const slots: SlotState[] = templateSlots(d, a).map((s) => {
-    const link = d.links.find((l) => l.assetId === a.id && l.slot === s.item);
-    const tag = link ? d.tags.find((t) => t.raw === link.raw && t.status === '승인') ?? null : null;
-    return { item: s.item, req: s.req, raw: tag ? tag.raw : null, tag };
-  });
+  const slots: SlotState[] = templateSlots(d, a).map((s) => ({
+    item: s.item,
+    req: s.req,
+    kind: s.kind,
+    tag: slotOwner(d, a.id, s.item) ?? null,
+  }));
   const req = slots.filter((s) => s.req);
   const met = req.filter((s) => s.tag).length;
   return { slots, requiredTotal: req.length, requiredMet: met, ok: met === req.length };
 }
 
-/** 설비의 순시 전력 값(kW). 연결·승인된 경우에만 값이 있다 */
+/** 설비의 순시 전력 값(kW). 승인된 태그가 연결된 경우에만 값이 있다 */
 export function assetPower(d: Data, assetId: string): number | null {
   const a = d.assets.find((x) => x.id === assetId);
   if (!a) return null;
@@ -95,7 +105,7 @@ export function codeUsage(d: Data, group: string, code: string): number {
     case 'unit':
       return d.tags.filter((t) => t.unit === code).length;
     case 'kind':
-      return d.tags.filter((t) => t.kind === code).length;
+      return d.templates.reduce((n, t) => n + t.slots.filter((s) => s.kind === code).length, 0);
     case 'node':
       return d.nodes.filter((n) => n.type === code).length;
     default:
@@ -106,44 +116,60 @@ export function codeUsage(d: Data, group: string, code: string): number {
 export function validate(d: Data): Issue[] {
   const out: Issue[] = [];
 
-  // 1) 필수 슬롯 미연결
+  // 1) 필수 항목 미연결
   for (const a of d.assets) {
     for (const s of fulfillment(d, a).slots) {
       if (s.req && !s.tag) {
-        const n = candidates(d, a, s.item).length;
+        const n = d.tags.filter((t) => t.status === '제안' && t.assetId === a.id && t.slot === s.item).length;
         out.push({
           id: `slot:${a.id}:${s.item}`,
           severity: '오류',
-          title: `필수 슬롯 미연결: ${a.code} · ${s.item}`,
-          detail: n > 0 ? `연결 가능한 승인 포인트 ${n}개 — 설비 연결에서 선택` : '승인된 후보 없음 — 포인트 승인이 먼저 필요',
-          href: '/assets',
-          linkText: '설비 연결로',
+          title: `필수 항목 미연결: ${a.code} · ${s.item}`,
+          detail: n > 0 ? `이 항목으로 지정된 미승인 태그 ${n}개 — 승인하면 연결됩니다` : '이 항목으로 지정된 태그가 없습니다',
+          href: '/params',
+          linkText: '파라미터 관리로',
           assetId: a.id,
         });
       }
     }
   }
 
-  // 2) 필수 슬롯에 해당하는 태그의 단위 누락
+  // 2) 필수 항목에 지정된 태그의 단위 누락
   for (const t of d.tags) {
-    if (t.status === '보류' || !t.assetCode || t.unit) continue;
-    const a = d.assets.find((x) => x.code === t.assetCode);
+    if (t.status === '보류' || !t.assetId || t.unit) continue;
+    const a = d.assets.find((x) => x.id === t.assetId);
     if (!a) continue;
-    const isReq = templateSlots(d, a).some((s) => s.item === t.slot && s.req);
-    if (isReq) {
+    if (templateSlots(d, a).some((s) => s.item === t.slot && s.req)) {
       out.push({
         id: `unit:${t.raw}`,
         severity: '오류',
         title: `단위 누락: ${t.raw}`,
-        detail: `${a.code} · ${t.slot} 슬롯에 해당하나 단위가 없어 승인할 수 없음`,
-        href: '/points',
-        linkText: '포인트 승인으로',
+        detail: `${a.code} · ${t.slot} 항목에 지정되었으나 단위가 없습니다`,
+        href: '/params',
+        linkText: '파라미터 관리로',
         assetId: a.id,
       });
     }
   }
 
-  // 3) 뷰별 배치 누락 (requireCoverage 뷰)
+  // 3) 같은 항목에 승인된 태그가 둘 이상, 같은 설비 안의 포인트명 중복
+  for (const a of d.assets) {
+    const approved = d.tags.filter((t) => t.status === '승인' && t.assetId === a.id);
+    const bySlot = new Map<string, number>();
+    const byName = new Map<string, number>();
+    for (const t of approved) {
+      if (t.slot) bySlot.set(t.slot, (bySlot.get(t.slot) ?? 0) + 1);
+      byName.set(t.name, (byName.get(t.name) ?? 0) + 1);
+    }
+    for (const [slot, n] of bySlot) {
+      if (n > 1) out.push({ id: `dupslot:${a.id}:${slot}`, severity: '오류', title: `중복 연결: ${a.code} · ${slot}`, detail: `승인된 태그가 ${n}개입니다`, href: '/params', linkText: '파라미터 관리로', assetId: a.id });
+    }
+    for (const [name, n] of byName) {
+      if (n > 1) out.push({ id: `dupname:${a.id}:${name}`, severity: '오류', title: `포인트명 중복: ${a.code} · ${name}`, detail: `같은 설비에 같은 이름이 ${n}개입니다`, href: '/params', linkText: '파라미터 관리로', assetId: a.id });
+    }
+  }
+
+  // 4) 뷰별 배치 누락 (requireCoverage 뷰)
   for (const v of d.views.filter((x) => x.requireCoverage)) {
     const placed = new Set(placementsIn(d, v.key).map((p) => p.assetId));
     for (const a of d.assets) {
@@ -152,16 +178,16 @@ export function validate(d: Data): Issue[] {
           id: `cov:${v.key}:${a.id}`,
           severity: '경고',
           title: `${v.label} 미배치: ${a.code}`,
-          detail: `${v.label}은(는) 모든 설비가 배치되어야 합니다`,
-          href: '/',
-          linkText: '설비 배치로',
+          detail: `${v.label} 뷰에는 모든 설비를 배치해야 합니다`,
+          href: '/map',
+          linkText: '트리 매핑으로',
           assetId: a.id,
         });
       }
     }
   }
 
-  // 4) 배분율 합계 (같은 뷰에서 같은 설비)
+  // 5) 배분율 합계 (같은 뷰에서 같은 설비)
   for (const v of d.views) {
     for (const a of d.assets) {
       const pls = placementsIn(d, v.key).filter((p) => p.assetId === a.id);
@@ -173,15 +199,16 @@ export function validate(d: Data): Issue[] {
           severity: '오류',
           title: `배분율 합계 ${sum}%: ${a.code} (${v.label})`,
           detail: '같은 뷰에서 여러 곳에 배치한 설비의 배분율 합은 100%여야 합니다',
-          href: '/',
-          linkText: '설비 배치로',
+          href: '/map',
+          linkText: '트리 매핑으로',
           assetId: a.id,
         });
       }
     }
   }
 
-  // 5) 전력계통 합산 정합성: 상위 노드 설비 값 vs 하위 설비 합
+  // 6) 전력계통 합산 정합성: 상위 노드 설비 값 vs 하위 설비 합
+  const tol = d.settings.sumTolerancePct;
   const power = d.views.find((v) => v.key === 'power');
   if (power) {
     for (const p of placementsIn(d, power.key)) {
@@ -195,22 +222,22 @@ export function validate(d: Data): Issue[] {
       }
       if (sum <= 0) continue;
       const diff = (Math.abs(parentVal - sum) / parentVal) * 100;
-      if (diff > SUM_TOLERANCE_PCT) {
+      if (diff > tol) {
         const a = d.assets.find((x) => x.id === p.assetId);
         out.push({
           id: `sum:${p.id}`,
           severity: '경고',
           title: `합산 차이 ${diff.toFixed(1)}%: ${a?.code ?? p.assetId}`,
-          detail: `상위 ${parentVal}kW 대비 하위 설비 합 ${sum}kW (허용 ${SUM_TOLERANCE_PCT}%)`,
-          href: '/',
-          linkText: '설비 배치로',
+          detail: `상위 ${parentVal}kW 대비 하위 설비 합 ${sum}kW (허용 ${tol}%)`,
+          href: '/map',
+          linkText: '트리 매핑으로',
           assetId: p.assetId,
         });
       }
     }
   }
 
-  // 6) 사용 중지된 코드를 아직 쓰는 경우
+  // 7) 사용 중지된 코드를 아직 쓰는 경우
   for (const c of d.codes.filter((x) => !x.active)) {
     const n = codeUsage(d, c.group, c.code);
     if (n > 0) {
@@ -220,7 +247,7 @@ export function validate(d: Data): Issue[] {
         title: `사용 중지 코드 참조: ${c.code}`,
         detail: `${n}건이 아직 이 코드를 사용합니다`,
         href: '/codes',
-        linkText: '코드 관리로',
+        linkText: '기준 코드로',
       });
     }
   }

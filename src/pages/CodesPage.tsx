@@ -14,8 +14,8 @@ export function CodesPage() {
   const g = data.codeGroups.find((x) => x.key === group)!;
   return (
     <>
-      <h2>기준 코드</h2>
-      <p className="lead">단위·설비 유형 같은 기본 코드입니다. 처음에는 확인만 하고, 현장에만 있는 항목이 있을 때 LOC_ 코드를 추가하세요.</p>
+      <header className="ph"><h2>기준 코드</h2>
+      <p>단위·설비 유형 같은 기본 코드입니다. 처음에는 확인만 하고, 현장에만 있는 항목이 있을 때 LOC_ 코드를 추가하세요.</p></header>
       <div className="tabs">
         {data.codeGroups.map((x) => <button key={x.key} className={x.key === group ? 'on' : ''} onClick={() => setGroup(x.key)}>{x.label}</button>)}
       </div>

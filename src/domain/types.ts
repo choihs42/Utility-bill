@@ -20,23 +20,22 @@ export interface CodeItem {
   from: string;
 }
 
-/** 수집 원천 태그(raw) + 표준 포인트 제안. 상태가 '승인'이면 표준 포인트로 확정된 것으로 본다. */
+/**
+ * 수집 원천 태그(raw) + 표준 포인트 정의.
+ * 설비(assetId)와 항목(slot)이 정해지고 상태가 '승인'이면 그 설비 항목에 연결된 것으로 본다.
+ */
 export interface SourceTag {
   raw: string;
   device: string;
+  /** 포인트 ID: 승인할 때 부여 */
   ptId: string;
   name: string;
-  item: string;
-  kind: string; // 계측 성격 코드 (INST/CUM/INTV)
-  unit: string; // 단위 코드 ('' = 누락)
-  conf: number;
+  unit: string; // 단위 코드 ('' = 미지정)
   status: TagStatus;
-  reasons: string[];
-  /** 약어 사전으로 추정한 설비 코드 */
-  assetCode: string | null;
-  /** 설비 템플릿의 어느 슬롯에 해당하는지 */
+  /** 설비는 코드가 아닌 내부 ID로 참조한다(코드를 바꿔도 연결 유지) */
+  assetId: string | null;
   slot: string | null;
-  /** 더미 순시값(kW). 합산 정합성 검증에 사용 */
+  /** 더미 순시값(kW). 합산 정합성 점검에 사용 */
   value: number | null;
 }
 
@@ -48,22 +47,31 @@ export interface Asset {
   energy: string; // 에너지원 코드
 }
 
-export interface Template {
-  type: string;
-  slots: { item: string; req: boolean }[];
+export interface TemplateSlot {
+  item: string;
+  req: boolean;
+  kind: string; // 계측 성격 코드 (INST/CUM/INTV)
 }
 
-/** 설비 슬롯 ↔ 원천 태그(표준 포인트) 연결 */
-export interface AssetLink {
-  assetId: string;
-  slot: string;
-  raw: string;
+export interface Template {
+  type: string;
+  slots: TemplateSlot[];
+}
+
+/** 약어 사전: 원천 태그 이름의 조각(토큰) → 설비 또는 항목 */
+export interface Alias {
+  id: string;
+  token: string;
+  kind: 'asset' | 'slot';
+  assetId?: string;
+  slot?: string;
+  unit?: string;
 }
 
 export interface View {
   key: string;
   label: string;
-  /** true 이면 모든 설비가 이 뷰에 배치되어야 한다(검증 규칙) */
+  /** true 이면 모든 설비가 이 뷰에 배치되어야 한다(점검 규칙) */
   requireCoverage: boolean;
 }
 
@@ -96,12 +104,13 @@ export interface Data {
   tags: SourceTag[];
   assets: Asset[];
   templates: Template[];
-  links: AssetLink[];
+  aliases: Alias[];
   views: View[];
   nodes: TreeNode[];
   placements: Placement[];
   log: LogEntry[];
-  counters: { pl: number; nd: number; lg: number };
+  settings: { sumTolerancePct: number };
+  counters: { pl: number; nd: number; lg: number; as: number; al: number };
 }
 
 export interface Issue {

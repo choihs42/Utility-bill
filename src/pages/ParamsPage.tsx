@@ -1,18 +1,28 @@
 import { useState } from 'react';
-import { PointsSection } from './PointsPage';
 import { AssetsSection } from './AssetsPage';
+import { PointsSection } from './PointsPage';
+import { AliasSection } from './AliasPage';
+
+const TABS = [
+  { key: 'assets', label: '설비·템플릿' },
+  { key: 'points', label: '포인트 매핑' },
+  { key: 'alias', label: '약어 사전' },
+] as const;
 
 export function ParamsPage() {
-  const [tab, setTab] = useState<'points' | 'assets'>('points');
+  const [tab, setTab] = useState<(typeof TABS)[number]['key']>('assets');
   return (
     <>
-      <h2>파라미터 관리</h2>
-      <p className="lead">① 수집된 태그를 포인트로 승인하고, ② 설비에 연결합니다. 이 연결은 한 번만 하면 어느 트리에 놓아도 그대로 쓰입니다.</p>
+      <header className="ph">
+        <h2>파라미터 관리</h2>
+        <p>설비와 템플릿을 정하고, 수집 태그를 설비 항목에 매핑합니다. 승인한 태그는 해당 설비 항목에 바로 연결됩니다.</p>
+      </header>
       <div className="tabs">
-        <button className={tab === 'points' ? 'on' : ''} onClick={() => setTab('points')}>① 포인트 승인</button>
-        <button className={tab === 'assets' ? 'on' : ''} onClick={() => setTab('assets')}>② 설비 연결</button>
+        {TABS.map((t) => <button key={t.key} className={tab === t.key ? 'on' : ''} onClick={() => setTab(t.key)}>{t.label}</button>)}
       </div>
-      {tab === 'points' ? <PointsSection /> : <AssetsSection />}
+      {tab === 'assets' && <AssetsSection />}
+      {tab === 'points' && <PointsSection />}
+      {tab === 'alias' && <AliasSection />}
     </>
   );
 }

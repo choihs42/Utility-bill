@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../store/store';
 import { useAction } from '../components/useAction';
 import { Msg } from '../components/Msg';
+import { ask } from '../components/confirm';
 import * as A from '../domain/actions';
 import { childrenOf, pathCode, subtreeIds } from '../domain/derive';
 import type { TreeNode } from '../domain/types';
@@ -40,7 +41,7 @@ export function TreeDesignPage() {
         <span className="act">
           <button className="ghost" onClick={() => { reset(); setParent(n.id); }}>하위 추가</button>
           <button className="ghost" onClick={() => startEdit(n)}>수정</button>
-          <button className="ghost" onClick={() => exec((d) => A.deleteNode(d, n.id))}>삭제</button>
+          <button className="ghost" onClick={() => ask(`노드 ${pathCode(data, n.id)}을(를) 삭제합니다.`) && exec((d) => A.deleteNode(d, n.id))}>삭제</button>
         </span>
       </div>
       {childrenOf(data, n.id, view).length > 0 && <ul>{childrenOf(data, n.id, view).map((c) => row(c, depth + 1))}</ul>}
@@ -49,8 +50,8 @@ export function TreeDesignPage() {
 
   return (
     <>
-      <h2>계통 트리 설계</h2>
-      <p className="lead">뷰(전력·조직·공간)별로 트리 구조를 만듭니다. 경로 코드(회색 태그)는 노드 코드를 이어서 자동으로 만들어집니다.</p>
+      <header className="ph"><h2>계통 트리 설계</h2>
+      <p>뷰(전력·조직·공간)별로 트리 구조를 만듭니다. 경로 코드(회색 태그)는 노드 코드를 이어서 자동으로 만들어집니다.</p></header>
       <div className="tabs">
         {data.views.map((v) => (
           <button key={v.key} className={v.key === view ? 'on' : ''} onClick={() => { setView(v.key); reset(); }}>{v.label}</button>

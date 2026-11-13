@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../store/store';
 import { useAction } from '../components/useAction';
 import { Msg } from '../components/Msg';
+import { ask } from '../components/confirm';
 import * as A from '../domain/actions';
 import { childrenOf, pathCode, placementsIn } from '../domain/derive';
 import type { TreeNode } from '../domain/types';
@@ -33,7 +34,7 @@ export function MapPage() {
               <span>{a.name}</span>
               <code>{a.code}</code>
               <label>배분율 <input type="number" min={1} max={100} value={p.share} onChange={(e) => exec((d) => A.setShare(d, p.id, Number(e.target.value)))} />%</label>
-              <button className="ghost" onClick={() => exec((d) => A.removePlacement(d, p.id))}>해제</button>
+              <button className="ghost" onClick={() => ask(`${a.code}의 배치(${pathCode(data, n.id)})를 해제합니다.`) && exec((d) => A.removePlacement(d, p.id))}>해제</button>
             </div>
           );
         })}
@@ -44,8 +45,8 @@ export function MapPage() {
 
   return (
     <>
-      <h2>트리 매핑</h2>
-      <p className="lead">설비를 트리의 알맞은 위치에 놓습니다. 같은 설비를 전력·조직·공간 트리에 모두 놓을 수 있고, 한 트리의 여러 곳에 놓으면 배분율로 나눕니다.</p>
+      <header className="ph"><h2>트리 매핑</h2>
+      <p>설비를 트리의 알맞은 위치에 놓습니다. 같은 설비를 전력·조직·공간 트리에 모두 놓을 수 있고, 한 트리의 여러 곳에 놓으면 배분율로 나눕니다.</p></header>
       <div className="tabs">
         {data.views.map((v) => (
           <button key={v.key} className={v.key === view ? 'on' : ''} onClick={() => setView(v.key)}>{v.label}</button>

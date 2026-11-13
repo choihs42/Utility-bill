@@ -1,6 +1,7 @@
-import type { Data } from './types';
+import type { Data, SourceTag } from './types';
+import type { TagRow } from './csv';
 import { EFFECTIVE_DATE } from './seed';
-import { candidates, nodeById, pathCode, placementsIn, subtreeIds, templateSlots } from './derive';
+import { nodeById, pathCode, slotOwner, slotsOfType, subtreeIds, templateSlots } from './derive';
 
 // 상태 변경은 모두 순수 함수: (데이터, 인자) → { data, error, note }. 오류면 데이터는 그대로.
 export interface Result {
@@ -11,7 +12,6 @@ export interface Result {
 }
 
 const fail = (data: Data, error: string): Result => ({ data, error });
-
 const stamp = () => new Date().toISOString().slice(0, 16).replace('T', ' ');
 
 /** 성공 결과를 만들면서 변경 이력에 한 줄 남긴다 */
@@ -24,52 +24,76 @@ function done(d: Data, text: string, note?: string): Result {
   };
 }
 
-/* ---------- 파라미터 ---------- */
+const unitActive = (d: Data, unit: string) => d.codes.some((c) => c.group === 'unit' && c.code === unit && c.active);
+
+/* ---------- 포인트 매핑 ---------- */
 
 export interface TagPatch {
   name?: string;
-  assetCode?: string | null;
+  assetId?: string | null;
   slot?: string | null;
   unit?: string;
 }
 
-/** 태그 매핑 편집: 포인트명(직접 입력), 설비·항목·단위(목록 선택). 설비/항목이 바뀌면 승인과 연결을 되돌린다 */
-export function updateTag(d: Data, raw: string, patch: TagPatch): Result {
-  const t = d.tags.find((x) => x.raw === raw);
-  if (!t) return fail(d, '태그를 찾을 수 없습니다.');
+type Patched = { tag: SourceTag; reset: boolean } | { error: string };
+
+/** 태그 한 줄 수정(검증 포함). 승인된 태그의 설비/항목이 바뀌면 승인을 되돌린다 */
+function patchTag(d: Data, t: SourceTag, patch: TagPatch): Patched {
   const next = { ...t };
   if (patch.name !== undefined) next.name = patch.name.trim();
   if (patch.unit !== undefined) {
-    if (patch.unit !== '') {
-      const code = d.codes.find((c) => c.group === 'unit' && c.code === patch.unit);
-      if (!code || !code.active) return fail(d, `사용할 수 없는 단위 코드입니다: ${patch.unit}`);
-    }
+    if (patch.unit !== '' && !unitActive(d, patch.unit)) return { error: `사용할 수 없는 단위 코드입니다: ${patch.unit}` };
     next.unit = patch.unit;
   }
-  if (patch.assetCode !== undefined) {
-    if (patch.assetCode !== null && !d.assets.some((a) => a.code === patch.assetCode)) return fail(d, '없는 설비입니다.');
-    next.assetCode = patch.assetCode;
+  if (patch.assetId !== undefined) {
+    if (patch.assetId !== null && !d.assets.some((a) => a.id === patch.assetId)) return { error: '없는 설비입니다.' };
+    next.assetId = patch.assetId;
     if (patch.slot === undefined) next.slot = null;
   }
   if (patch.slot !== undefined) {
-    const a = d.assets.find((x) => x.code === next.assetCode);
-    if (patch.slot !== null && !(a && templateSlots(d, a).some((s) => s.item === patch.slot))) return fail(d, '이 설비에 없는 항목입니다.');
+    const a = d.assets.find((x) => x.id === next.assetId);
+    if (patch.slot !== null && !(a && templateSlots(d, a).some((s) => s.item === patch.slot))) {
+      return { error: `${t.raw}: 이 설비에 없는 항목입니다.` };
+    }
     next.slot = patch.slot;
   }
-  const remap = next.assetCode !== t.assetCode || next.slot !== t.slot;
-  let links = d.links;
-  let note: string | undefined;
-  if (remap && t.status === '승인') {
-    next.status = '제안';
-    links = d.links.filter((l) => l.raw !== raw);
-    note = '설비/항목을 바꿔 승인이 해제되고 기존 연결이 풀렸습니다. 다시 승인하세요.';
-  }
-  const tags = d.tags.map((x) => (x.raw === raw ? next : x));
-  return done({ ...d, tags, links }, `태그 매핑 수정: ${raw}`, note);
+  if (t.status === '승인' && (!next.name || !next.unit)) return { error: `${t.raw}: 승인된 태그의 포인트명과 단위는 비울 수 없습니다.` };
+  const reset = t.status === '승인' && (next.assetId !== t.assetId || next.slot !== t.slot);
+  if (reset) next.status = '제안';
+  return { tag: next, reset };
+}
+
+const RESET_NOTE = '설비/항목이 바뀐 승인 태그는 승인이 해제되었습니다. 다시 승인하세요.';
+
+export function updateTag(d: Data, raw: string, patch: TagPatch): Result {
+  const t = d.tags.find((x) => x.raw === raw);
+  if (!t) return fail(d, '태그를 찾을 수 없습니다.');
+  const r = patchTag(d, t, patch);
+  if ('error' in r) return fail(d, r.error);
+  return done({ ...d, tags: d.tags.map((x) => (x.raw === raw ? r.tag : x)) }, `태그 수정: ${raw}`, r.reset ? RESET_NOTE : undefined);
 }
 
 export function setTagUnit(d: Data, raw: string, unit: string): Result {
   return updateTag(d, raw, { unit });
+}
+
+/** 선택한 여러 태그에 같은 설비/항목/단위를 한 번에 지정 (하나라도 오류면 전체 취소) */
+export function bulkUpdateTags(d: Data, raws: string[], patch: TagPatch): Result {
+  if (raws.length === 0) return fail(d, '선택한 태그가 없습니다.');
+  const set = new Set(raws);
+  let reset = 0;
+  const tags: SourceTag[] = [];
+  for (const t of d.tags) {
+    if (!set.has(t.raw)) {
+      tags.push(t);
+      continue;
+    }
+    const r = patchTag(d, t, patch);
+    if ('error' in r) return fail(d, r.error);
+    if (r.reset) reset += 1;
+    tags.push(r.tag);
+  }
+  return done({ ...d, tags }, `태그 ${raws.length}개 일괄 수정`, reset ? RESET_NOTE : `${raws.length}개를 수정했습니다.`);
 }
 
 function nextPtId(d: Data): string {
@@ -77,62 +101,218 @@ function nextPtId(d: Data): string {
   return `PT-${String(max + 1).padStart(6, '0')}`;
 }
 
-export function approveTag(d: Data, raw: string): Result {
+/** 승인 검증 + 적용(이력 없음). 승인 = 해당 설비 항목에 연결 */
+function approveInner(d: Data, raw: string): { data: Data } | { error: string } {
   const t = d.tags.find((x) => x.raw === raw);
-  if (!t) return fail(d, '태그를 찾을 수 없습니다.');
-  if (!t.name) return fail(d, '포인트명을 입력하세요.');
-  if (!t.assetCode || !t.slot) return fail(d, '설비와 항목을 선택하세요.');
-  if (!t.unit) return fail(d, '단위가 없는 태그는 승인할 수 없습니다. 단위를 먼저 선택하세요.');
+  if (!t) return { error: '태그를 찾을 수 없습니다.' };
+  if (!t.name) return { error: `${raw}: 포인트명을 입력하세요.` };
+  if (!t.assetId || !t.slot) return { error: `${raw}: 설비와 항목을 선택하세요.` };
+  if (!t.unit) return { error: `${raw}: 단위를 선택하세요.` };
+  const a = d.assets.find((x) => x.id === t.assetId);
+  const other = slotOwner(d, t.assetId, t.slot, raw);
+  if (other) return { error: `${raw}: ${a?.code} · ${t.slot} 항목에는 이미 ${other.raw}가 연결되어 있습니다. 그 태그를 먼저 보류하세요.` };
+  const dup = d.tags.find((x) => x.raw !== raw && x.status === '승인' && x.assetId === t.assetId && x.name === t.name);
+  if (dup) return { error: `${raw}: 같은 설비에 같은 포인트명(${t.name})이 있습니다.` };
   const ptId = t.ptId || nextPtId(d);
-  return done({ ...d, tags: d.tags.map((x) => (x.raw === raw ? { ...x, ptId, status: '승인' } : x)) }, `포인트 승인: ${raw}`);
+  return { data: { ...d, tags: d.tags.map((x) => (x.raw === raw ? { ...x, ptId, status: '승인' } : x)) } };
 }
 
-/** 신뢰도 80% 이상이고 단위가 있는 제안 태그를 한 번에 승인 */
+export function approveTag(d: Data, raw: string): Result {
+  const r = approveInner(d, raw);
+  if ('error' in r) return fail(d, r.error);
+  const t = d.tags.find((x) => x.raw === raw)!;
+  const a = d.assets.find((x) => x.id === t.assetId);
+  return done(r.data, `포인트 승인: ${raw} → ${a?.code} · ${t.slot}`, `${a?.code} · ${t.slot} 항목에 연결되었습니다.`);
+}
+
+/** 입력이 모두 채워진 제안 태그를 한 번에 승인. 항목이 겹치는 태그는 건너뛴다 */
 export function approveAllReady(d: Data): Result {
-  const ready = d.tags.filter((t) => t.status === '제안' && t.name && t.assetCode && t.slot && t.unit && t.conf >= 80);
-  if (ready.length === 0) return { data: d, error: null, note: '한 번에 승인할 수 있는 포인트가 없습니다.' };
-  const set = new Set(ready.map((t) => t.raw));
-  return done({ ...d, tags: d.tags.map((t) => (set.has(t.raw) ? { ...t, status: '승인' } : t)) }, `포인트 ${ready.length}개 일괄 승인`, `${ready.length}개를 승인했습니다. 단위가 없거나 신뢰도가 낮은 태그는 남겨두었습니다.`);
-}
-
-/** 보류: 승인 취소와 같다. 이 태그를 쓰던 연결도 함께 해제 */
-export function holdTag(d: Data, raw: string): Result {
-  if (!d.tags.some((t) => t.raw === raw)) return fail(d, '태그를 찾을 수 없습니다.');
-  return done({ ...d, tags: d.tags.map((t) => (t.raw === raw ? { ...t, status: '보류' } : t)), links: d.links.filter((l) => l.raw !== raw) }, `포인트 보류: ${raw}`);
-}
-
-export function linkSlot(d: Data, assetId: string, slot: string, raw: string): Result {
-  const a = d.assets.find((x) => x.id === assetId);
-  if (!a) return fail(d, '설비를 찾을 수 없습니다.');
-  if (!candidates(d, a, slot).some((t) => t.raw === raw)) return fail(d, '이 항목에 연결할 수 없는 포인트입니다.');
-  const links = d.links.filter((l) => !(l.assetId === assetId && l.slot === slot));
-  links.push({ assetId, slot, raw });
-  return done({ ...d, links }, `연결: ${a.code} · ${slot} ← ${raw}`);
-}
-
-export function unlinkSlot(d: Data, assetId: string, slot: string): Result {
-  const a = d.assets.find((x) => x.id === assetId);
-  return done({ ...d, links: d.links.filter((l) => !(l.assetId === assetId && l.slot === slot)) }, `연결 해제: ${a?.code ?? assetId} · ${slot}`);
-}
-
-/** 후보가 하나뿐인 빈 항목을 모두 자동 연결 */
-export function autoLinkAll(d: Data): Result {
-  const links = [...d.links];
-  let n = 0;
-  for (const a of d.assets) {
-    for (const s of templateSlots(d, a)) {
-      const cur = links.find((l) => l.assetId === a.id && l.slot === s.item);
-      const valid = cur && d.tags.some((t) => t.raw === cur.raw && t.status === '승인');
-      if (valid) continue;
-      const c = candidates(d, a, s.item);
-      if (c.length === 1) {
-        links.push({ assetId: a.id, slot: s.item, raw: c[0].raw });
-        n += 1;
-      }
+  let cur = d;
+  const ok: string[] = [];
+  const skipped: string[] = [];
+  for (const t of d.tags.filter((x) => x.status === '제안' && x.name && x.assetId && x.slot && x.unit)) {
+    const r = approveInner(cur, t.raw);
+    if ('error' in r) skipped.push(t.raw);
+    else {
+      cur = r.data;
+      ok.push(t.raw);
     }
   }
-  if (n === 0) return { data: d, error: null, note: '자동으로 연결할 항목이 없습니다. (후보가 하나뿐인 빈 항목만 연결합니다)' };
-  return done({ ...d, links }, `설비 항목 ${n}개 자동 연결`, `${n}개 항목을 자동으로 연결했습니다.`);
+  if (ok.length === 0) return { data: d, error: null, note: '한 번에 승인할 수 있는 태그가 없습니다. (포인트명·설비·항목·단위가 모두 있어야 합니다)' };
+  const extra = skipped.length ? ` 항목이 겹쳐 건너뜀: ${skipped.join(', ')}` : '';
+  return done(cur, `포인트 ${ok.length}개 일괄 승인`, `${ok.length}개를 승인했습니다.${extra}`);
+}
+
+/** 보류: 승인 취소와 같다. 해당 설비 항목의 연결도 풀린다 */
+export function holdTag(d: Data, raw: string): Result {
+  if (!d.tags.some((t) => t.raw === raw)) return fail(d, '태그를 찾을 수 없습니다.');
+  return done({ ...d, tags: d.tags.map((t) => (t.raw === raw ? { ...t, status: '보류' } : t)) }, `포인트 보류: ${raw}`);
+}
+
+/** 약어 사전으로 빈 칸만 채운다. 이미 입력된 값은 바꾸지 않는다 */
+function fillOne(d: Data, t: SourceTag): SourceTag {
+  if (t.status !== '제안') return t;
+  const tokens = t.raw.split(/[_\-\s]+/).filter(Boolean).map((x) => x.toLowerCase());
+  const has = (token: string) => tokens.includes(token.toLowerCase());
+  const next = { ...t };
+  if (!next.assetId) {
+    const al = d.aliases.find((a) => a.kind === 'asset' && has(a.token) && d.assets.some((x) => x.id === a.assetId));
+    if (al) next.assetId = al.assetId ?? null;
+  }
+  const asset = d.assets.find((x) => x.id === next.assetId);
+  if (asset && !next.slot) {
+    const slots = templateSlots(d, asset);
+    const al = d.aliases.find((a) => a.kind === 'slot' && has(a.token) && slots.some((s) => s.item === a.slot));
+    if (al) next.slot = al.slot ?? null;
+  }
+  if (next.slot && !next.unit) {
+    const al = d.aliases.find((a) => a.kind === 'slot' && has(a.token) && a.slot === next.slot && a.unit && unitActive(d, a.unit));
+    if (al) next.unit = al.unit ?? '';
+  }
+  if (asset && next.slot && !next.name) next.name = `${asset.name} ${next.slot}`;
+  return next;
+}
+
+function fillAliases(d: Data, only?: Set<string>): { data: Data; changed: number } {
+  let changed = 0;
+  const tags = d.tags.map((t) => {
+    if (only && !only.has(t.raw)) return t;
+    const n = fillOne(d, t);
+    if (n.assetId !== t.assetId || n.slot !== t.slot || n.unit !== t.unit || n.name !== t.name) changed += 1;
+    return n;
+  });
+  return { data: { ...d, tags }, changed };
+}
+
+export function applyAliases(d: Data): Result {
+  const r = fillAliases(d);
+  if (r.changed === 0) return { data: d, error: null, note: '사전으로 채울 빈 칸이 없습니다.' };
+  return done(r.data, `약어 사전 적용: ${r.changed}개 태그`, `${r.changed}개 태그의 빈 칸을 채웠습니다. 입력된 값은 그대로 두었습니다.`);
+}
+
+/** 태그 가져오기: 중복 태그는 건너뛰고, 새 태그는 약어 사전으로 빈 칸을 채운다 */
+export function importTags(d: Data, rows: TagRow[]): Result {
+  const known = new Set(d.tags.map((t) => t.raw));
+  const added: SourceTag[] = [];
+  const skipped: string[] = [];
+  for (const r of rows) {
+    if (!r.raw || known.has(r.raw)) {
+      skipped.push(r.raw || '(빈 태그)');
+      continue;
+    }
+    known.add(r.raw);
+    const asset = r.assetCode ? d.assets.find((a) => a.code === r.assetCode) : undefined;
+    const slotOk = asset && r.slot && templateSlots(d, asset).some((s) => s.item === r.slot);
+    added.push({
+      raw: r.raw,
+      device: r.device || '-',
+      ptId: '',
+      name: r.name,
+      unit: r.unit && unitActive(d, r.unit) ? r.unit : '',
+      status: '제안',
+      assetId: asset ? asset.id : null,
+      slot: slotOk ? r.slot : null,
+      value: null,
+    });
+  }
+  if (added.length === 0) return fail(d, rows.length === 0 ? '가져올 행이 없습니다.' : `새로 추가할 태그가 없습니다. (중복 또는 빈 값: ${skipped.join(', ')})`);
+  const merged = fillAliases({ ...d, tags: [...d.tags, ...added] }, new Set(added.map((t) => t.raw)));
+  const extra = skipped.length ? ` 건너뜀 ${skipped.length}개(중복/빈 값): ${skipped.slice(0, 5).join(', ')}${skipped.length > 5 ? ' …' : ''}` : '';
+  return done(merged.data, `태그 ${added.length}개 가져오기`, `${added.length}개를 추가했습니다. 약어 사전으로 ${merged.changed}개의 빈 칸을 채웠습니다.${extra}`);
+}
+
+/* ---------- 설비 ---------- */
+
+const ASSET_CODE = /^[A-Za-z0-9가-힣_-]{1,20}$/;
+
+function checkAsset(d: Data, code: string, name: string, type: string, energy: string, selfId?: string): string | null {
+  if (!ASSET_CODE.test(code)) return '설비 코드는 한글·영문·숫자·밑줄·하이픈 1~20자로 입력하세요.';
+  if (d.assets.some((a) => a.id !== selfId && a.code === code)) return '이미 있는 설비 코드입니다.';
+  if (!name.trim()) return '설비 이름을 입력하세요.';
+  if (!d.codes.some((c) => c.group === 'asset' && c.code === type && c.active)) return '사용할 수 있는 설비 유형이 아닙니다.';
+  if (!d.codes.some((c) => c.group === 'energy' && c.code === energy && c.active)) return '사용할 수 있는 에너지원이 아닙니다.';
+  return null;
+}
+
+export function addAsset(d: Data, code: string, name: string, type: string, energy: string): Result {
+  const err = checkAsset(d, code, name, type, energy);
+  if (err) return fail(d, err);
+  const id = `a${d.counters.as}`;
+  return done(
+    { ...d, assets: [...d.assets, { id, code, name: name.trim(), type, energy }], counters: { ...d.counters, as: d.counters.as + 1 } },
+    `설비 추가: ${code}`,
+  );
+}
+
+/** 코드·이름은 언제든 바꿀 수 있다(태그와 배치는 내부 ID로 연결). 매핑된 태그가 있으면 유형은 바꿀 수 없다 */
+export function updateAsset(d: Data, id: string, code: string, name: string, type: string, energy: string): Result {
+  const a = d.assets.find((x) => x.id === id);
+  if (!a) return fail(d, '설비를 찾을 수 없습니다.');
+  const err = checkAsset(d, code, name, type, energy, id);
+  if (err) return fail(d, err);
+  if (type !== a.type && d.tags.some((t) => t.assetId === id && t.slot)) {
+    return fail(d, '항목에 매핑된 태그가 있어 설비 유형을 바꿀 수 없습니다. 태그의 항목 지정을 먼저 해제하세요.');
+  }
+  return done({ ...d, assets: d.assets.map((x) => (x.id === id ? { ...x, code, name: name.trim(), type, energy } : x)) }, `설비 수정: ${a.code}${a.code !== code ? ` → ${code}` : ''}`);
+}
+
+export function deleteAsset(d: Data, id: string): Result {
+  const a = d.assets.find((x) => x.id === id);
+  if (!a) return fail(d, '설비를 찾을 수 없습니다.');
+  const nt = d.tags.filter((t) => t.assetId === id).length;
+  if (nt > 0) return fail(d, `태그 ${nt}개가 이 설비로 지정되어 있어 삭제할 수 없습니다. 태그의 설비 지정을 먼저 바꾸세요.`);
+  const np = d.placements.filter((p) => p.assetId === id).length;
+  if (np > 0) return fail(d, `트리에 ${np}곳 배치되어 있어 삭제할 수 없습니다. 먼저 배치를 해제하세요.`);
+  return done({ ...d, assets: d.assets.filter((x) => x.id !== id), aliases: d.aliases.filter((x) => x.assetId !== id) }, `설비 삭제: ${a.code}`);
+}
+
+/* ---------- 설비 유형 템플릿 ---------- */
+
+export function addSlot(d: Data, type: string, item: string, req: boolean, kind: string): Result {
+  if (!d.codes.some((c) => c.group === 'asset' && c.code === type)) return fail(d, '설비 유형을 찾을 수 없습니다.');
+  if (!item.trim()) return fail(d, '항목 이름을 입력하세요.');
+  if (!d.codes.some((c) => c.group === 'kind' && c.code === kind)) return fail(d, '계측 성격을 선택하세요.');
+  if (slotsOfType(d, type).some((s) => s.item === item.trim())) return fail(d, '이미 있는 항목입니다.');
+  const slot = { item: item.trim(), req, kind };
+  const has = d.templates.some((t) => t.type === type);
+  const templates = has ? d.templates.map((t) => (t.type === type ? { ...t, slots: [...t.slots, slot] } : t)) : [...d.templates, { type, slots: [slot] }];
+  return done({ ...d, templates }, `템플릿 항목 추가: ${type} · ${slot.item}`);
+}
+
+export function removeSlot(d: Data, type: string, item: string): Result {
+  const codes = new Set(d.assets.filter((a) => a.type === type).map((a) => a.id));
+  const n = d.tags.filter((t) => t.assetId && codes.has(t.assetId) && t.slot === item).length;
+  if (n > 0) return fail(d, `이 항목에 지정된 태그가 ${n}개 있어 삭제할 수 없습니다. 태그의 항목 지정을 먼저 바꾸세요.`);
+  return done({ ...d, templates: d.templates.map((t) => (t.type === type ? { ...t, slots: t.slots.filter((s) => s.item !== item) } : t)) }, `템플릿 항목 삭제: ${type} · ${item}`);
+}
+
+export function toggleSlotReq(d: Data, type: string, item: string): Result {
+  return done(
+    { ...d, templates: d.templates.map((t) => (t.type === type ? { ...t, slots: t.slots.map((s) => (s.item === item ? { ...s, req: !s.req } : s)) } : t)) },
+    `필수 여부 변경: ${type} · ${item}`,
+  );
+}
+
+/* ---------- 약어 사전 ---------- */
+
+const TOKEN = /^[A-Za-z0-9가-힣]{1,20}$/;
+
+export function addAlias(d: Data, kind: 'asset' | 'slot', token: string, target: { assetId?: string; slot?: string; unit?: string }): Result {
+  if (!TOKEN.test(token)) return fail(d, '약어는 한글·영문·숫자 1~20자로 입력하세요. (밑줄은 태그 이름을 나누는 구분자라 쓸 수 없습니다)');
+  if (d.aliases.some((a) => a.kind === kind && a.token.toLowerCase() === token.toLowerCase())) return fail(d, '이미 등록된 약어입니다.');
+  if (kind === 'asset' && !d.assets.some((a) => a.id === target.assetId)) return fail(d, '설비를 선택하세요.');
+  if (kind === 'slot') {
+    if (!target.slot || !d.templates.some((t) => t.slots.some((s) => s.item === target.slot))) return fail(d, '항목을 선택하세요.');
+    if (target.unit && !unitActive(d, target.unit)) return fail(d, '사용할 수 없는 단위입니다.');
+  }
+  const alias = { id: `al-${d.counters.al}`, token, kind, ...target };
+  return done({ ...d, aliases: [...d.aliases, alias], counters: { ...d.counters, al: d.counters.al + 1 } }, `약어 추가: ${token}`);
+}
+
+export function removeAlias(d: Data, id: string): Result {
+  const a = d.aliases.find((x) => x.id === id);
+  if (!a) return fail(d, '약어를 찾을 수 없습니다.');
+  return done({ ...d, aliases: d.aliases.filter((x) => x.id !== id) }, `약어 삭제: ${a.token}`);
 }
 
 /* ---------- 계통 트리 설계 ---------- */
@@ -218,7 +398,7 @@ export function setShare(d: Data, placementId: string, share: number): Result {
   return done({ ...d, placements: d.placements.map((p) => (p.id === placementId ? { ...p, share } : p)) }, `배분율 변경: ${placementId} → ${share}%`);
 }
 
-/* ---------- 코드 ---------- */
+/* ---------- 코드·설정 ---------- */
 
 export function addCode(d: Data, group: string, code: string, label: string): Result {
   const g = d.codeGroups.find((x) => x.key === group);
@@ -237,4 +417,7 @@ export function toggleCode(d: Data, group: string, code: string): Result {
   return done({ ...d, codes: d.codes.map((x) => (x === c ? { ...x, active: !x.active } : x)) }, `코드 ${c.active ? '사용 중지' : '재사용'}: ${code}`);
 }
 
-export { placementsIn };
+export function setTolerance(d: Data, pct: number): Result {
+  if (!(pct >= 0 && pct <= 50)) return fail(d, '허용 오차는 0~50% 사이로 지정하세요.');
+  return done({ ...d, settings: { ...d.settings, sumTolerancePct: pct } }, `합산 허용 오차 변경: ${pct}%`);
+}
