@@ -418,7 +418,8 @@ function renderReport() {
   const w = STATE.week, everyone = weekRows(w), rows = myFilter(everyone), all = STATE.role === 'owner' ? rows : everyone;
   const tot = all.reduce((a, r) => a + r.kwh, 0), cost = all.reduce((a, r) => a + r.cost, 0);
   const prev = myFilterRows(weekRows(w - 1)), ptot = prev.reduce((a, r) => a + r.kwh, 0), pcost = prev.reduce((a, r) => a + r.cost, 0);
-  const handled = all.filter(r => ['done', 'exc', 'check'].includes(STATUS_NOW(r.e.id))).length;
+  const excNow = w === WEEKS - 1 ? Object.entries(STATE.status).filter(([k, v]) => v.s === 'exc' && v.at === today && (!owner0() || EQ[k].owner === '김도장')).length : 0;
+  const handled = all.filter(r => ['done', 'exc', 'check'].includes(STATUS_NOW(r.e.id))).length + excNow, totalResp = all.length + excNow;
   const kw = factoryIdleKw(w), pkw = factoryIdleKw(w - 1);
   const ai = aiSummary(w, everyone);
   const owner = STATE.role === 'owner';
@@ -436,9 +437,9 @@ function renderReport() {
   <div class="grid kpis">
     <div class="card kpi"><div class="lab">${owner ? '내 설비 ' : ''}비가동 낭비량</div><div class="val">${fmt(tot / 1000, 2)}<small>MWh</small></div><div class="delta">${delta(tot / 1000, ptot / 1000, 'MWh', 2)}</div></div>
     <div class="card kpi"><div class="lab">${owner ? '내 설비 ' : ''}낭비 금액</div><div class="val">${man(cost)}<small>만 원</small></div><div class="delta">${delta(cost / 10000, pcost / 10000, '만 원')}</div></div>
-    <div class="card kpi"><div class="lab">비가동 기저부하 (공장 평균)</div><div class="val">${fmt(kw, 0)}<small>kW</small></div><div class="delta">${delta(kw, pkw, 'kW', 0)}</div></div>
+    <div class="card kpi"><div class="lab">비가동 기저부하 (모니터링 설비 합계)</div><div class="val">${fmt(kw, 0)}<small>kW</small></div><div class="delta">${delta(kw, pkw, 'kW', 0)}</div></div>
     <div class="card kpi"><div class="lab">${owner ? '내 ' : ''}낭비 설비</div><div class="val">${all.length}<small>대</small></div><div class="delta">신규 ${all.filter(r => statusOf(r.e.id, w) === 'new').length}대 · 예외 ${Object.values(STATE.status).filter(x => x.s === 'exc').length}대 제외</div></div>
-    <div class="card kpi"><div class="lab">조치 응답률</div><div class="val">${all.length ? Math.round(handled / all.length * 100) : 0}<small>%</small></div><div class="delta">${handled} / ${all.length}건 응답</div></div>
+    <div class="card kpi"><div class="lab">조치 응답률</div><div class="val">${totalResp ? Math.round(handled / totalResp * 100) : 0}<small>%</small></div><div class="delta">${handled} / ${totalResp}건 응답</div></div>
   </div>
   <div class="ai" id="aiBox"><span class="badge">✦ AI 요약</span><p>${ai.txt}</p><div class="foot"><span>판정 엔진 결과를 문장으로 옮긴 것입니다 · 숫자 대조 완료</span><button class="linkbtn" id="basisBtn">근거 숫자 보기</button></div><div class="basis">${ai.basis}</div></div>
   ${todoCard(rows, owner)}
@@ -468,6 +469,7 @@ function renderReport() {
     </div>
   </div>`;
 }
+function owner0() { return STATE.role === 'owner'; }
 function STATUS_NOW(id) { return statusOf(id, STATE.week); }
 
 // LLM: 이번 주 할 일 3가지 (금액 × 실행 난이도 × 묶음 효과로 고름)
@@ -603,7 +605,7 @@ function renderDetail() {
   <div class="card" style="margin-bottom:14px">
     <div class="eqhead">
       <div style="flex:1">
-        <div style="display:flex;gap:10px;align-items:center"><span style="font-size:19px;font-weight:700">${e.name}</span>${chip(st === 'new' && r.kwh <= 1 ? 'done' : st)}${r.kwh <= 1 && st !== 'exc' ? '<span class="chip done">이번 주 정상</span>' : ''}</div>
+        <div style="display:flex;gap:10px;align-items:center"><span style="font-size:19px;font-weight:700">${e.name}</span>${r.kwh <= 1 && !STATE.status[e.id] ? '<span class="chip done">이번 주 정상</span>' : chip(st)}</div>
         <div class="meta">
           <div><span>위치</span>${e.zone}</div><div><span>부서 · 담당</span>${e.dept} · ${e.owner}</div>
           <div><span>허용 비가동 부하</span><b>${fmt(e.allowed, 1)} kW</b> <span style="display:inline" class="small">(자동 제안 ${fmt(e.suggested, 1)} kW${e.confirmNote ? ' → 에너지팀 확정' : ''})</span></div>
@@ -847,8 +849,8 @@ function renderSim() {
       <div><label>설비</label><select id="sEq">${eqOpts}</select>${sc.eqs.length > 1 ? `<div class="small muted" style="margin-top:4px">외 ${sc.eqs.length - 1}대 함께</div>` : ''}</div>
       <div><label>방식</label><select id="sType"><option value="off" ${sc.type === 'off' ? 'selected' : ''}>끄기</option><option value="shift" ${sc.type === 'shift' ? 'selected' : ''}>옮기기</option></select></div>
       <div><label>요일</label><select id="sDays"><option value="weekday" ${sc.days === 'weekday' ? 'selected' : ''}>평일</option><option value="weekend" ${sc.days === 'weekend' ? 'selected' : ''}>주말·휴일</option><option value="all" ${sc.days === 'all' ? 'selected' : ''}>매일</option><option value="idle" ${sc.days === 'idle' ? 'selected' : ''}>비가동 시간 전체</option></select></div>
-      <div><label>시작</label><select id="sFrom">${tOpts(sc.from)}</select></div>
-      <div><label>종료</label><select id="sTo">${tOpts(sc.to)}</select></div>
+      <div><label>시작</label><select id="sFrom" ${sc.days === 'idle' ? 'disabled' : ''}>${tOpts(sc.from)}</select></div>
+      <div><label>종료</label><select id="sTo" ${sc.days === 'idle' ? 'disabled' : ''}>${tOpts(sc.to)}</select></div>
       <div><label>옮길 시작 시각</label><select id="sShift" ${sc.type === 'shift' ? '' : 'disabled'}>${tOpts(sc.shiftTo ?? 20)}</select></div>
       <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end"><label style="margin:0;display:flex;gap:5px;align-items:center"><input type="checkbox" id="sReb" ${sc.rebound ? 'checked' : ''}/> 재가동 부하 반영</label><button class="btn primary" id="sRun">실행</button></div>
     </div>
@@ -868,7 +870,8 @@ function bindSim(m) {
   m.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { r(); STATE.sim = b.dataset.preset; render(); });
   const go2 = () => { const k = nlParse($('#nlIn').value); if (!k) { flash('미리보기에서는 배기팬·압축기·예열·옮기기·공조기 예시만 이해합니다.'); return; } r(); STATE.sim = k; render(); flash(`AI가 “${PRESETS[k].label}”로 해석했습니다.`); };
   $('#nlGo').onclick = go2; $('#nlIn').onkeydown = ev => { if (ev.key === 'Enter') go2(); };
-  $('#sType').onchange = () => { $('#sShift').disabled = $('#sType').value !== 'shift'; };
+  const sync = () => { const sh = $('#sType').value === 'shift', idle = $('#sDays').value === 'idle'; $('#sShift').disabled = !sh; $('#sReb').disabled = sh; $('#sFrom').disabled = $('#sTo').disabled = idle; };
+  $('#sType').onchange = sync; $('#sDays').onchange = sync; sync();
   $('#sRun').onclick = () => {
     const cur = STATE.simCustom || PRESETS[STATE.sim], id = $('#sEq').value;
     STATE.simCustom = { eqs: id === cur.eqs[0] ? cur.eqs : [id], type: $('#sType').value, days: $('#sDays').value, from: +$('#sFrom').value, to: +$('#sTo').value, shiftTo: +$('#sShift').value, rebound: $('#sReb').checked };
@@ -957,22 +960,22 @@ function askFree(id) {
   $('#fOk').onclick = () => {
     const main = items.find(x => x.k === 'done') || items.find(x => x.k === 'exc') || items[0];
     items.filter(x => x !== main).forEach(x => (STATE.log[id] = STATE.log[id] || []).push({ at: today, t: `${x.d} (AI 정리)` }));
-    setStatus(id, main.k === 'note' ? 'check' : main.k, main.d.replace(/^(조치|예외|확인 필요) · /, '') + ' (AI 정리)');
+    setStatus(id, main.k === 'note' ? 'check' : main.k, items.map(x => x.d).join(' / ') + ' (AI 정리)');
     closeModal(); $('#modal').classList.remove('wide'); render(); flash(`${items.length}건을 기록했습니다.`);
   };
 }
 function flash(msg) { const t = $('#toast'); t.style.right = $('#drawer').style.display === 'flex' ? '424px' : '24px'; t.style.borderLeftColor = 'var(--good)'; t.innerHTML = `<div class="t2" style="margin:0">${msg}</div>`; t.style.display = 'block'; clearTimeout(flash.h); flash.h = setTimeout(() => t.style.display = 'none', 2600); }
 
 $('#alertSim').onclick = () => {
-  const e = EQ.E05, t = $('#toast');
+  const mine = STATE.role === 'owner', e = mine ? EQ.E01 : EQ.E05, t = $('#toast');
   t.style.borderLeftColor = 'var(--waste)';
   t.innerHTML = `<div class="t1"><span>실시간 알림 · 비가동 낭비</span><span>금 23:15</span></div>
-    <div class="t2">공기압축기 3호기가 42kW로 운전 중입니다</div>
-    <div class="t3">퇴근(22:00) 후 1시간이 지났습니다. 주말 동안 이대로면 약 <b>2.4MWh(약 27만 원)</b>입니다. 담당: 박설비</div>
+    <div class="t2">${mine ? '도장 2동 배기팬 #1이 14kW로 운전 중입니다' : '공기압축기 3호기가 42kW로 운전 중입니다'}</div>
+    <div class="t3">퇴근(22:00) 후 1시간이 지났습니다. 주말 동안 이대로면 약 <b>${mine ? '0.7MWh(약 8만 원)' : '2.4MWh(약 27만 원)'}</b>입니다. 담당: ${e.owner}</div>
     <div class="acts"><button class="btn primary" id="tGo">설비 보기</button><button class="btn" id="tDone">정지했어요</button><button class="btn ghost" id="tX">닫기</button></div>`;
   t.style.right = $('#drawer').style.display === 'flex' ? '424px' : '24px'; t.style.display = 'block'; clearTimeout(flash.h);
-  $('#tGo').onclick = () => { t.style.display = 'none'; go('detail', { eq: 'E05' }); };
-  $('#tDone').onclick = () => { t.style.display = 'none'; setStatus('E05', 'done', '퇴근 시 수동 정지'); render(); flash('정지 기록을 남겼습니다.'); };
+  $('#tGo').onclick = () => { t.style.display = 'none'; go('detail', { eq: e.id }); };
+  $('#tDone').onclick = () => { t.style.display = 'none'; setStatus(e.id, 'done', '퇴근 시 수동 정지'); render(); flash('정지 기록을 남겼습니다.'); };
   $('#tX').onclick = () => t.style.display = 'none';
 };
 
