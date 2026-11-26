@@ -142,6 +142,10 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
 .band .prog i { background: #7ea8ff; }
 .rb-head { display: flex; align-items: center; gap: 16px; margin: 20px 0 8px; padding-top: 14px; border-top: 1px solid var(--band-line); font-size: 12px; color: var(--band-ink2); }
 .rb-head b { color: var(--band-ink); font-weight: 600; font-size: 13px; }
+.rb-lead { font-size: 13px; color: var(--band-ink2); }
+.rb-lead b { font-size: 13px !important; color: #fff !important; }
+.ribbon .cell { cursor: pointer; }
+.ribbon .cell:hover circle { stroke: #fff; }
 .rb-key { margin-left: auto; display: flex; align-items: center; gap: 14px; }
 .rb-key span { display: inline-flex; align-items: center; gap: 6px; }
 .rb-key i { width: 12px; height: 10px; border-radius: 2px; display: inline-block; }
@@ -648,43 +652,67 @@ function renderReport() {
     </div>
   </div>`;
 }
-function ribbon(w, rows) {
-  const TOP = 8, list = rows.slice(0, TOP), rest = rows.length - list.length;
-  const LV = ['#8a541d', '#d07c1f', '#ffb25c'], IDLE_C = '#1b3054';
-  const W = 1000, xl = 186, xr = 84, cw = (W - xl - xr) / 168, rh = 36, hy = 22, H = hy + list.length * rh + (rest > 0 ? 22 : 4);
-  const pattern = (r) => {
-    const byDay = Array(7).fill(0), hrs = [];
-    r.runs.forEach(x => { const d = x.d - w * 7; for (let k = x.from; k < x.to; k++) { byDay[d] += 1; if (workday(x.d)) hrs.push(k / 4); } });
-    const tot = byDay.reduce((a, b) => a + b, 0) || 1, wkEnd = byDay.reduce((a, v, d) => a + (workday(w * 7 + d) ? 0 : v), 0) / tot;
-    const nights = byDay.filter((v, d) => v > 0 && workday(w * 7 + d)).length;
-    if (nights >= 4 && wkEnd > .2) return '비가동 시간 내내';
-    if (nights >= 4 && hrs.every(h => h >= 3 && h < 7)) return '평일 이른 아침 반복';
-    if (nights >= 4) return '평일 야간 반복';
-    if (wkEnd > .7) return '주말 연속 운전';
-    return nights ? `평일 ${nights}일 야간` : '간헐';
-  };
-  const head = Array.from({ length: 7 }, (_, d) => { const dd = w * 7 + d, dt = dayDate(dd), x = xl + d * 24 * cw;
-    return `${d ? `<line x1="${x}" x2="${x}" y1="4" y2="${H - 22}" stroke="var(--band-line)"/>` : ''}<text x="${x + 12 * cw}" y="12" font-size="11.5" text-anchor="middle" fill="${workday(dd) ? 'var(--band-ink2)' : 'var(--band-ink)'}" font-weight="${workday(dd) ? 400 : 600}">${md(dt)} ${DOW[dt.getDay()]}${HOLIDAYS.has(iso(dt)) ? ' 휴일' : ''}</text>`; }).join('');
-  const body = list.map((r, i) => {
-    const y = hy + i * rh, cy = y + 7, ch = rh - 14, cnt = {}, kw = {};
-    r.runs.forEach(x => { for (let k = x.from; k < x.to; k++) { const key = (x.d - w * 7) * 24 + Math.floor(k / 4); cnt[key] = (cnt[key] || 0) + 1; kw[key] = (kw[key] || 0) + (r.e.p[x.d * SPD + k] - r.e.allowed) * .25; } });
-    let cells = '';
-    for (let c = 0; c < 168; c++) {
-      const d = Math.floor(c / 24), h = c % 24, dd = w * 7 + d, x = (xl + c * cw).toFixed(1), wd = (cw + .15).toFixed(2);
-      if (cnt[c]) { const dt = dayDate(dd);
-        cells += `<rect class="w" x="${x}" y="${cy}" width="${wd}" height="${ch}" fill="${LV[cnt[c] >= 4 ? 2 : cnt[c] === 3 ? 1 : 0]}" data-tip="${r.e.name}<br>${md(dt)} ${DOW[dt.getDay()]} ${String(h).padStart(2, '0')}–${String(h + 1).padStart(2, '0')}시<br><b>${fmt(kw[c], 1)} kWh 낭비</b> (15분 ${cnt[c]}칸)"/>`; }
-      else if (!isWork(dd, h * 4)) cells += `<rect x="${x}" y="${cy}" width="${wd}" height="${ch}" fill="${IDLE_C}"/>`;
+function idleSegs(w) {
+  const L = 7 * SPD, segs = []; let cur = null;
+  for (let i = 0; i <= L; i++) {
+    const idle = i < L && !isWork(w * 7 + Math.floor(i / SPD), i % SPD);
+    if (idle) { if (!cur) cur = { a: i, b: i + 1 }; else cur.b = i + 1; } else if (cur) { segs.push(cur); cur = null; }
+  }
+  const hh = s => `${String(Math.floor(s / 4)).padStart(2, '0')}`;
+  return segs.map(g => {
+    const d0 = Math.floor(g.a / SPD), d1 = Math.floor((g.b - 1) / SPD), len = g.b - g.a, dt0 = dayDate(w * 7 + d0), dt1 = dayDate(w * 7 + d1);
+    if (len >= SPD) {
+      const wk = Array.from({ length: d1 - d0 + 1 }, (_, k) => dayDate(w * 7 + d0 + k).getDay()).some(x => x === 0 || x === 6);
+      return { ...g, len, wide: true, t: wk ? '주말' : '휴일', sub: `${DOW[dt0.getDay()]} ${hh(g.a % SPD)}시 – ${DOW[dt1.getDay()]} ${g.b % SPD ? hh(g.b % SPD) : 24}시` };
     }
-    return `<g class="hm-row" data-open="${r.e.id}"><rect class="hm-bg" x="-8" y="${y}" width="${W + 16}" height="${rh}" rx="4" fill="transparent"/>
-      <text x="0" y="${y + 15}" font-size="12.5" font-weight="600" fill="var(--band-ink)">${r.e.name}</text>
-      <text x="0" y="${y + 29}" font-size="11" fill="var(--band-ink2)">${pattern(r)}</text>${cells}
-      <text x="${W}" y="${y + 21}" font-size="12.5" font-weight="600" text-anchor="end" fill="#fff">${won(r.cost)}</text></g>`;
+    if (g.a === 0) return { ...g, len, t: `${DOW[dt0.getDay()]} 새벽`, sub: `00–${hh(g.b % SPD)}시` };
+    return { ...g, len, t: `${DOW[dt0.getDay()]} 밤`, sub: `${hh(g.a % SPD)}–${hh(g.b % SPD)}시` };
+  });
+}
+const josa = (w, a, b) => { const c = w.trim().slice(-1), code = c.charCodeAt(0);
+  if (code >= 0xAC00 && code <= 0xD7A3) return (code - 0xAC00) % 28 ? a : b;
+  if (/[0-9]/.test(c)) return '013678'.includes(c) ? a : b;  // 영·일·삼·육·칠·팔은 받침 있음
+  return b; };
+function ribbon(w, rows) {
+  const TOP = 8, list = rows.slice(0, TOP), rest = rows.length - list.length, segs = idleSegs(w);
+  const AMB = '#ffaa4d', OFF = 'rgba(255,255,255,.28)';
+  const W = 1000, xl = 210, xr = 96, hy = 44, rh = 46, H = hy + list.length * rh + (rest > 0 ? 24 : 6);
+  const wt = segs.map(g => g.wide ? 1.7 : g.len < 40 ? .75 : 1), tw = wt.reduce((a, b) => a + b, 0);
+  let acc = xl; const cx = segs.map((g, k) => { const cw = (W - xl - xr) * wt[k] / tw, c = { x: acc, w: cw, m: acc + cw / 2 }; acc += cw; return c; });
+  const rowData = list.map(r => {
+    const m = new Uint8Array(7 * SPD), kw = new Float32Array(7 * SPD);
+    r.runs.forEach(x => { for (let k = x.from; k < x.to; k++) { const i = (x.d - w * 7) * SPD + k; m[i] = 1; kw[i] = (r.e.p[x.d * SPD + k] - r.e.allowed) * .25; } });
+    const cells = segs.map(g => { let n = 0, k = 0; for (let i = g.a; i < g.b; i++) { n += m[i]; k += kw[i]; } return { ratio: n / g.len, h: n / 4, kwh: k }; });
+    const wd = cells.filter((c, j) => !segs[j].wide && c.ratio > 0).length, wdN = segs.filter(g => !g.wide).length, we = cells.some((c, j) => segs[j].wide && c.ratio > .5);
+    const early = r.runs.every(x => !workday(x.d) || (x.from >= 12 && x.to <= 28));
+    const pat = wd >= wdN - 1 && we ? '비가동 시간 내내' : wd >= wdN - 1 && early ? '평일 이른 아침마다' : wd >= wdN - 1 ? '평일 밤마다' : we && !wd ? '주말 내내' : wd ? `평일 ${wd}일 밤` : '간헐적으로';
+    return { r, cells, pat };
+  });
+  const glyph = (x, y, c) => c.ratio >= .8 ? `<circle cx="${x}" cy="${y}" r="8" fill="${AMB}"/>`
+    : c.ratio > 0 ? `<circle cx="${x}" cy="${y}" r="7" fill="none" stroke="${AMB}" stroke-width="2"/><path d="M${x} ${y - 7} A7 7 0 0 1 ${x} ${y + 7} Z" fill="${AMB}"/>`
+    : `<circle cx="${x}" cy="${y}" r="7" fill="none" stroke="${OFF}" stroke-width="1.5"/>`;
+  const head = segs.map((g, k) => `${k ? `<line x1="${cx[k].x}" x2="${cx[k].x}" y1="4" y2="${H - (rest > 0 ? 24 : 6)}" stroke="var(--band-line)"/>` : ''}
+    <text x="${cx[k].m}" y="15" font-size="12.5" font-weight="600" text-anchor="middle" fill="var(--band-ink)">${g.t}</text>
+    <text x="${cx[k].m}" y="31" font-size="11" text-anchor="middle" fill="var(--band-ink2)">${g.sub}</text>`).join('');
+  const body = rowData.map(({ r, cells, pat }, i) => {
+    const y = hy + i * rh, cy = y + rh / 2;
+    return `<g class="hm-row" data-open="${r.e.id}"><rect class="hm-bg" x="-8" y="${y + 2}" width="${W + 16}" height="${rh - 4}" rx="5" fill="transparent"/>
+      <line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="var(--band-line)"/>
+      <text x="0" y="${cy - 3}" font-size="13" font-weight="600" fill="var(--band-ink)">${r.e.name}</text>
+      <text x="0" y="${cy + 13}" font-size="11.5" fill="var(--band-ink2)">${pat}</text>
+      ${cells.map((c, k) => { const g = segs[k], tip = `${r.e.name}<br>${g.t} (${g.sub})<br>${c.ratio > 0 ? `<b>${fmt(g.len / 4, 0)}시간 중 ${fmt(c.h, c.h % 1 ? 1 : 0)}시간 운전</b>, ${fmt(c.kwh, 0)} kWh 낭비` : '꺼져 있었음 (정상)'}`;
+        return `<g class="cell" data-tip="${tip}"><rect x="${cx[k].x + 2}" y="${y + 3}" width="${cx[k].w - 4}" height="${rh - 6}" fill="transparent"/>${glyph(c.ratio > 0 && c.h >= 1 ? cx[k].m - 14 : cx[k].m, cy, c)}${c.ratio > 0 && c.h >= 1 ? `<text x="${cx[k].m - 1}" y="${cy + 4}" font-size="12" fill="var(--band-ink)">${fmt(c.h, 0)}h</text>` : ''}</g>`; }).join('')}
+      <text x="${W}" y="${cy + 5}" font-size="14" font-weight="600" text-anchor="end" fill="#fff">${won(r.cost)}</text></g>`;
   }).join('');
-  const sw = c => `<i style="background:${c}"></i>`;
-  return `<div class="rb-head"><b>설비별 주간 낭비 패턴</b>
-      <div class="rb-key"><span>${sw(IDLE_C)}비가동 정상</span><span>낭비 <span class="ramp">${LV.map(sw).join('')}</span></span></div></div>
-    <svg class="chart ribbon" viewBox="0 0 ${W} ${H}" role="img" aria-label="설비별 요일·시간대 낭비 패턴">${head}${body}
-      ${rest > 0 ? `<text x="${W}" y="${H - 4}" font-size="11" text-anchor="end" fill="var(--band-ink2)">외 ${rest}대는 아래 목록에서</text>` : ''}</svg>`;
+  // 결론 한 줄: 패턴별로 묶어 금액 큰 두 묶음
+  const grp = {}; rowData.forEach(x => { (grp[x.pat] = grp[x.pat] || { n: [], c: 0 }); grp[x.pat].n.push(x.r.e.name); grp[x.pat].c += x.r.cost; });
+  const top2 = Object.entries(grp).sort((a, b) => b[1].c - a[1].c).slice(0, 2).map(([p, g]) => { const who = g.n.length > 1 ? `${g.n[0].replace(/\s*#?\d+$/, '')} 등 ${g.n.length}대` : g.n[0]; return `<b>${who}</b>${josa(who, '은', '는')} ${p}`; });
+  const lead = top2.length ? `${top2.join(', ')} 켜져 있었습니다.` : '';
+  const key = `<svg width="16" height="16" viewBox="-8 -8 16 16" aria-hidden="true">`;
+  return `<div class="rb-head"><b>설비별 비가동 구간 운전</b><span class="rb-lead">${lead}</span>
+      <div class="rb-key"><span>${key}${glyph(0, 0, { ratio: 1 })}</svg>내내 운전</span><span>${key}${glyph(0, 0, { ratio: .5 })}</svg>일부</span><span>${key}${glyph(0, 0, { ratio: 0 })}</svg>꺼짐</span></div></div>
+    <svg class="chart ribbon" viewBox="0 0 ${W} ${H}" role="img" aria-label="설비별 비가동 구간 운전 여부">${head}${body}
+      ${rest > 0 ? `<text x="${W}" y="${H - 6}" font-size="11.5" text-anchor="end" fill="var(--band-ink2)">외 ${rest}대는 아래 목록에서</text>` : ''}</svg>`;
 }
 function todoSection(rows, owner, tot, cost, ptot) {
   const its = todoItems(rows);
