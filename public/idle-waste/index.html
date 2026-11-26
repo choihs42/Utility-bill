@@ -433,40 +433,37 @@ function renderReport() {
     <div><h1>${owner ? '내 설비 · ' : ''}주간 비가동 낭비 리포트</h1><div class="sub">비가동 시간(평일 22–07시, 주말·공휴일)에 허용 부하를 넘어 운전된 설비 · 매주 월요일 07:00 발송</div></div>
     <div class="right"><select id="weekSel">${weekOpts}</select></div>
   </div>
-  ${owner ? `<div class="todo-banner"><b>처리할 항목 ${myTodo.length}건</b><span class="muted">항목마다 “차단 조치함 / 예외 / 확인 필요” 중 하나를 골라주세요. 조치하면 다음 주 리포트와 월간 효과 판정에 반영됩니다.</span></div>` : ''}
-  <div class="grid kpis">
-    <div class="card kpi"><div class="lab">${owner ? '내 설비 ' : ''}비가동 낭비량</div><div class="val">${fmt(tot / 1000, 2)}<small>MWh</small></div><div class="delta">${delta(tot / 1000, ptot / 1000, 'MWh', 2)}</div></div>
-    <div class="card kpi"><div class="lab">${owner ? '내 설비 ' : ''}낭비 금액</div><div class="val">${man(cost)}<small>만 원</small></div><div class="delta">${delta(cost / 10000, pcost / 10000, '만 원')}</div></div>
-    <div class="card kpi"><div class="lab">비가동 기저부하 (모니터링 설비 합계)</div><div class="val">${fmt(kw, 0)}<small>kW</small></div><div class="delta">${delta(kw, pkw, 'kW', 0)}</div></div>
+  ${owner ? `<div class="todo-banner"><b>처리할 항목 ${myTodo.length}건</b><span class="muted">껐으면 “차단 조치함”, 꺼지면 안 되는 이유가 있으면 “다른 사유”를 눌러 한 줄로 적어주세요.</span></div>` : ''}
+  <div class="grid kpis" style="grid-template-columns:repeat(3,1fr)">
+    <div class="card kpi"><div class="lab">${owner ? '내 설비 ' : ''}낭비 금액</div><div class="val">${man(cost)}<small>만 원</small></div><div class="delta">${delta(cost / 10000, pcost / 10000, '만 원')} · ${fmt(tot / 1000, 2)} MWh</div></div>
     <div class="card kpi"><div class="lab">${owner ? '내 ' : ''}낭비 설비</div><div class="val">${all.length}<small>대</small></div><div class="delta">신규 ${all.filter(r => statusOf(r.e.id, w) === 'new').length}대 · 예외 ${Object.values(STATE.status).filter(x => x.s === 'exc').length}대 제외</div></div>
     <div class="card kpi"><div class="lab">조치 응답률</div><div class="val">${totalResp ? Math.round(handled / totalResp * 100) : 0}<small>%</small></div><div class="delta">${handled} / ${totalResp}건 응답</div></div>
   </div>
-  <div class="ai" id="aiBox"><span class="badge">✦ AI 요약</span><p>${ai.txt}</p><div class="foot"><span>판정 엔진 결과를 문장으로 옮긴 것입니다 · 숫자 대조 완료</span><button class="linkbtn" id="basisBtn">근거 숫자 보기</button></div><div class="basis">${ai.basis}</div></div>
-  ${todoCard(rows, owner)}
-  <div class="grid two">
+  ${todoCard(rows, owner, tot, cost, ptot)}
+  <div class="grid ${owner ? '' : 'two'}">
     <div class="card">
       <h2>${owner ? '내 설비 낭비 목록' : '낭비 설비 목록'}</h2><div class="cap">금액 순 · 행을 누르면 설비 상세로 이동</div>
       <table>
-        <thead><tr><th>설비</th><th>담당</th><th class="num">낭비 시간</th><th class="num">낭비량</th><th class="num">금액</th><th class="bar-cell"></th><th>상태</th><th>조치</th></tr></thead>
+        <thead><tr><th>설비</th>${owner ? '' : '<th>담당</th>'}<th class="num">낭비 시간</th><th class="num">낭비량</th><th class="num">금액</th><th class="bar-cell"></th><th>상태</th><th>조치</th></tr></thead>
         <tbody>${rows.map(r => {
           const st = STATUS_NOW(r.e.id), max = all[0].cost;
           return `<tr class="row" data-eq="${r.e.id}">
-            <td><div class="eqname">${r.e.name} <span class="conf" title="AI가 낭비로 판정한 신뢰도">AI ${Math.round((CONF[r.e.id] || 0.8) * 100)}%</span></div><div class="eqsub">${r.e.zone} · ${r.e.dept}</div></td>
-            <td>${r.e.owner}</td>
+            <td><div class="eqname">${r.e.name} ${(CONF[r.e.id] || 0.8) < 0.85 ? `<span class="conf" title="AI 낭비 판정 신뢰도 ${Math.round((CONF[r.e.id] || 0.8) * 100)}%">확인 권장</span>` : ''}</div><div class="eqsub">${r.e.zone} · ${r.e.dept}</div></td>
+            ${owner ? '' : `<td>${r.e.owner}</td>`}
             <td class="num">${fmt(r.hours, 1)}h</td>
             <td class="num">${fmt(r.kwh, 0)} kWh</td>
             <td class="num"><b>${won(r.cost)}</b></td>
             <td class="bar-cell"><div class="minibar" style="width:${Math.max(4, r.cost / max * 100)}%"></div></td>
             <td>${chip(st)}</td>
-            <td><div class="acts">${['todo', 'new'].includes(st) ? `<button class="btn" data-act="done" data-id="${r.e.id}">차단 조치함</button><button class="btn ghost" data-act="free" data-id="${r.e.id}">✦ 말로 입력</button>` : `<button class="btn ghost" data-act="undo" data-id="${r.e.id}">되돌리기</button>`}</div></td>
+            <td><div class="acts">${['todo', 'new'].includes(st) ? `<button class="btn" data-act="done" data-id="${r.e.id}">차단 조치함</button><button class="btn ghost" data-act="free" data-id="${r.e.id}">다른 사유</button>` : `<button class="btn ghost" data-act="undo" data-id="${r.e.id}">되돌리기</button>`}</div></td>
           </tr>`; }).join('') || `<tr><td colspan="8" class="muted" style="padding:24px 8px">이번 주 낭비로 잡힌 설비가 없습니다.</td></tr>`}</tbody>
       </table>
       ${exclBlock(w)}
     </div>
-    <div class="grid">
+    ${owner ? '' : `<div class="grid">
       <div class="card"><h2>부서별 낭비 금액</h2><div class="cap">공장 전체 · ${weekLabel(w)}</div>${deptChart(everyone)}</div>
       <div class="card"><h2>주별 비가동 낭비량</h2><div class="cap">최근 12주 · MWh</div>${trendChart(w)}</div>
-    </div>
+    </div>`}
   </div>`;
 }
 function owner0() { return STATE.role === 'owner'; }
@@ -489,17 +486,20 @@ function todoItems(rows) {
   });
   return items.sort((a, b) => b.score - a.score).slice(0, 3);
 }
-function todoCard(rows, owner) {
+function todoCard(rows, owner, tot, cost, ptot) {
   const its = todoItems(rows);
-  if (!its.length) return '';
+  const ch = ptot ? (tot - ptot) / ptot * 100 : 0;
+  const head = `지난주 ${owner ? '내 설비의 ' : ''}비가동 낭비는 <b>${fmt(tot / 1000, 1)}MWh(약 ${man(cost)}만 원)</b>로 전주보다 ${Math.abs(ch).toFixed(0)}% ${ch >= 0 ? '늘었습니다' : '줄었습니다'}.`;
+  if (!its.length) return `<div class="ai"><span class="badge">✦ AI 요약</span><p>${head} 이번 주 처리할 일은 모두 끝났습니다.</p></div>`;
   const sum = its.reduce((a, x) => a + x.cost, 0);
-  return `<div class="ai"><span class="badge">✦ AI 추천 · 이번 주 할 일 ${its.length}가지</span>
-    <p style="margin-top:6px;font-size:13.5px" class="muted">금액, 조치 난이도, 한 번에 묶어 처리할 수 있는지를 함께 보고 골랐습니다. 세 가지를 하면 주 ${man(sum)}만 원(연 약 ${fmt(sum * 52 / 1e8, 2)}억 원)의 낭비가 사라집니다.</p>
+  return `<div class="ai"><span class="badge">✦ AI · 이번 주 할 일 ${its.length}가지</span>
+    <p>${head} 아래 ${its.length}가지만 처리하면 주 <b>${man(sum)}만 원</b>(연 약 ${fmt(sum * 52 / 1e8, 2)}억 원)이 줄어듭니다.</p>
+    <div class="small muted" style="margin-top:4px">금액, 조치 난이도, 한 번에 묶어 처리할 수 있는지를 보고 골랐습니다.</div>
     <div class="todo3">${its.map((x, i) => `<div class="it"><div class="no">${i + 1}</div><div class="tt">${x.t}</div><div class="why">${x.why}</div><div class="how">→ ${x.how}</div>
       <div class="meta"><b>주 ${won(x.cost)}</b><span>담당 ${x.owner}</span><span style="margin-left:auto;display:flex;gap:6px">${x.sim ? `<button class="btn" data-sim="${x.sim}">시뮬레이션</button>` : ''}<button class="btn ghost" data-goeq="${x.eq}">상세</button></span></div></div>`).join('')}</div></div>`;
 }
 function exclBlock(w) {
-  const ex = excludedRows(w);
+  const ex = myFilterRows(excludedRows(w));
   if (!ex.length) return '';
   return `<details class="excl"><summary>✦ AI가 정상 운전으로 판단해 제외한 후보 ${ex.length}건 (엔진은 허용 초과로 탐지)</summary>${ex.map(r => `<div class="xrow"><div style="min-width:170px"><div class="eqname">${r.e.name}</div><div class="eqsub">${r.e.zone} · ${fmt(r.kwh, 0)} kWh</div></div><div style="flex:1;line-height:1.55">${r.j.reason} <span class="conf">정상 ${Math.round(r.j.conf * 100)}%</span></div><button class="btn" data-incl="${r.e.id}-${w}">낭비로 포함</button></div>`).join('')}</details>`;
 }
@@ -615,7 +615,7 @@ function renderDetail() {
       </div>
       <div class="actbox">
         ${st === 'exc' ? `<div class="small muted">예외 등록됨: ${STATE.status[e.id].note}</div><button class="btn" data-act="undo" data-id="${e.id}">예외 해제</button>` :
-          ['todo', 'new'].includes(st) && r.kwh > 1 ? `<button class="btn primary" data-act="done" data-id="${e.id}">✓ 차단 조치함</button><button class="btn" data-act="exc" data-id="${e.id}">예외 등록 (항상 운전 필요)</button><button class="btn" data-act="check" data-id="${e.id}">확인 필요 (현장 점검)</button><button class="btn" data-act="free" data-id="${e.id}" style="color:var(--ai);border-color:#ddd5fb">✦ 상황을 말로 입력</button>` :
+          ['todo', 'new'].includes(st) && r.kwh > 1 ? `<button class="btn primary" data-act="done" data-id="${e.id}">✓ 차단 조치함</button><button class="btn" data-act="free" data-id="${e.id}">다른 사유 (예외·현장 확인)</button><div class="small muted" style="line-height:1.5">꺼지면 안 되는 이유나 확인이 필요한 사정을 한 줄로 적으면 AI가 예외·확인 요청으로 정리합니다.</div>` :
           st === 'done' || st === 'check' ? `<div class="small muted">${CHIP[st][1]} · ${STATE.status[e.id]?.at || ''}</div><button class="btn ghost" data-act="undo" data-id="${e.id}">되돌리기</button>` : `<div class="small muted">처리할 항목이 없습니다.</div>`}
       </div>
     </div>
@@ -685,7 +685,9 @@ function effectRows() {
   });
 }
 function renderEffect() {
-  const rows = effectRows();
+  const own = STATE.role === 'owner';
+  const rows = effectRows().filter(r => !own || r.e.owner === '김도장');
+  if (!rows.length) return `<div class="pagehead"><div><h1>내 조치 효과</h1><div class="sub">조치 전 4주와 조치 후 4주의 비가동 평균 부하를 비교합니다</div></div></div><div class="card" style="padding:40px;text-align:center"><div style="font-size:15px;font-weight:600">아직 효과를 판정할 조치가 없습니다</div><div class="muted" style="margin-top:6px">리포트에서 “차단 조치함”을 누르면 4주 뒤 이곳에 절감량이 표시되고, 부서 E-KPI 실적에 반영됩니다.</div></div>`;
   const valid = rows.filter(r => r.verdict === 'done');
   const sumM = valid.reduce((a, r) => a + r.mwh, 0), sumC = valid.reduce((a, r) => a + r.cost, 0);
   const steps = ['진단', '목표 배분', '조치', '검증'];
@@ -843,8 +845,7 @@ function renderSim() {
     <div class="nlbox"><input id="nlIn" value="주말에 도장 배기팬 다 끄면 얼마나 줄어?" /><button class="btn primary" id="nlGo">시뮬레이션</button></div>
     <div class="presets">${Object.entries(PRESETS).map(([k, v]) => `<button data-preset="${k}" class="${!STATE.simCustom && STATE.sim === k ? 'on' : ''}">${v.label}</button>`).join('')}</div>
   </div>
-  <div class="card" style="margin-bottom:14px">
-    <h2>시나리오 직접 설정</h2><div class="cap">AI가 해석한 결과도 여기에 채워집니다. 값을 바꿔 다시 실행할 수 있습니다</div>
+  <details class="card" style="margin-bottom:14px" ${STATE.simCustom ? 'open' : ''}><summary style="cursor:pointer"><b>세부 조정</b> <span class="small muted">설비·요일·시간을 직접 바꿔 다시 계산 · 지금 시나리오: ${STATE.simCustom ? '직접 설정' : PRESETS[STATE.sim].label}</span></summary><div style="height:12px"></div>
     <div class="simform">
       <div><label>설비</label><select id="sEq">${eqOpts}</select>${sc.eqs.length > 1 ? `<div class="small muted" style="margin-top:4px">외 ${sc.eqs.length - 1}대 함께</div>` : ''}</div>
       <div><label>방식</label><select id="sType"><option value="off" ${sc.type === 'off' ? 'selected' : ''}>끄기</option><option value="shift" ${sc.type === 'shift' ? 'selected' : ''}>옮기기</option></select></div>
@@ -854,7 +855,7 @@ function renderSim() {
       <div><label>옮길 시작 시각</label><select id="sShift" ${sc.type === 'shift' ? '' : 'disabled'}>${tOpts(sc.shiftTo ?? 20)}</select></div>
       <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end"><label style="margin:0;display:flex;gap:5px;align-items:center"><input type="checkbox" id="sReb" ${sc.rebound ? 'checked' : ''}/> 재가동 부하 반영</label><button class="btn primary" id="sRun">실행</button></div>
     </div>
-  </div>
+  </details>
   <div class="grid kpis" style="grid-template-columns:repeat(4,1fr)">
     <div class="card kpi"><div class="lab">대상 설비 사용량 (주)</div><div class="val">${fmt(r.kA, 0)}<small>kWh</small></div><div class="delta">${Math.abs(dk) < 1 ? '변화 없음 (시간만 이동)' : delta(dk, ' kWh')} · 조치 전 ${fmt(r.kB, 0)}</div></div>
     <div class="card kpi"><div class="lab">전력량요금 (연 환산)</div><div class="val">${dc >= 0 ? '−' : '+'}${manR(Math.abs(dc) * 52)}<small>만 원</small></div><div class="delta">주 ${won(Math.abs(dc))} ${dc >= 0 ? '절감' : '증가'} · 시간대별 예시 단가</div></div>
@@ -939,18 +940,23 @@ function parseFree(t, e) {
   if (/깜빡|퇴근/.test(t) && !out.some(x => x.k === 'done')) out.push({ k: 'done', d: '조치 · 퇴근 시 수동 정지', s: '금요일 퇴근 점검표에 추가 제안' });
   if (/(얘기|협의|확인 ?요청|업체|생산팀)/.test(t)) out.push({ k: 'check', d: `확인 필요 · ${/업체|BAS/.test(t) ? 'BAS 업체 스케줄 확인' : '생산팀 협의'}`, s: '1주 후 담당자에게 결과를 다시 묻습니다' });
   if (/겨울|기온|추우/.test(t)) out.push({ k: 'note', d: '메모 · 동절기 예열 시간 조정 가능성', s: '기온 보정 기준 검토 대상으로 에너지팀에 전달' });
+  if (/항상|상시/.test(t)) out.push({ k: 'exc', d: '예외 · 항상 운전 필요 · 상시', s: '상시 예외는 에너지팀 승인 후 적용됩니다' });
+  if (/특근|시운전/.test(t)) out.push({ k: 'exc', d: '예외 · 이번 주만 (특근·시운전)', s: '다음 주부터 다시 판정합니다' });
+  if (/현장 ?확인|점검/.test(t) && !out.some(x => x.k === 'check')) out.push({ k: 'check', d: '확인 필요 · 현장 점검', s: '1주 후 담당자에게 결과를 다시 묻습니다' });
   if (!out.length) out.push({ k: 'check', d: '확인 필요 · 내용 확인', s: '에너지팀이 내용을 검토합니다' });
   return out;
 }
 function askFree(id) {
   const e = EQ[id];
-  openModal(`<h3>✦ 상황을 말로 입력</h3><div class="small muted">${e.zone} · ${e.name} — 버튼 대신 상황을 그대로 적으면 AI가 예외·조치·확인 요청으로 나눠 정리합니다</div>
-    <label>현장 상황</label><textarea id="fText" rows="3">${FREE_EX[id] || FREE_EX.E01}</textarea>
+  openModal(`<h3>다른 사유</h3><div class="small muted">${e.zone} · ${e.name} — 고르거나 한 줄로 적으면 AI가 예외·조치·확인 요청으로 나눠 정리합니다</div>
+    <div class="presets" id="fQuick"><button>항상 운전이 필요한 설비예요</button><button>특근·시운전 때문이었어요</button><button>현장 확인이 필요해요</button></div>
+    <label>현장 상황 (자유롭게)</label><textarea id="fText" rows="3" placeholder="예: ${FREE_EX[id] || FREE_EX.E01}">${FREE_EX[id] || ''}</textarea>
     <div style="margin-top:8px"><button class="btn" id="fParse" style="color:var(--ai);border-color:#ddd5fb">✦ AI로 정리</button></div>
     <div class="parsed" id="fOut"></div>
     <div class="row-end"><button class="btn" onclick="closeModal()">취소</button><button class="btn primary" id="fOk" disabled>이대로 저장</button></div>`);
   $('#modal').classList.add('wide');
   let items = [];
+  $('#fQuick').querySelectorAll('button').forEach(b => b.onclick = () => { $('#fText').value = b.textContent; $('#fParse').click(); });
   $('#fParse').onclick = () => {
     items = parseFree($('#fText').value, e);
     const ic = { exc: ['exc', '예외'], done: ['done', '조치'], check: ['check', '확인'], note: ['wait', '메모'] };
