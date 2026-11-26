@@ -28,6 +28,11 @@ export function Layout() {
               {n.to === '/check' && errors > 0 && <b className="b">{errors}</b>}
             </NavLink>
           ))}
+          <div className="side-sep">다른 데모</div>
+          <a href="./idle-waste/">
+            <i>↗</i>
+            <span>비가동 낭비 탐지</span>
+          </a>
         </nav>
         <div className="side-foot">
           <button className="ghost" disabled={!canUndo} onClick={() => appStore.getState().undo()}>되돌리기</button>
