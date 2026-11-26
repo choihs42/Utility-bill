@@ -145,7 +145,10 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
 .rb-key i { width: 12px; height: 10px; border-radius: 2px; display: inline-block; }
 .rb-key .ramp { display: inline-flex; gap: 2px; }
 .ribbon rect.w { cursor: pointer; }
-.ribbon rect.w:hover { stroke: #fff; stroke-width: 1.2; }
+.ribbon rect.w:hover { fill: #fff; }
+.ribbon rect { shape-rendering: crispEdges; }
+.hm-row { cursor: pointer; }
+.hm-row:hover .hm-bg { fill: rgba(255,255,255,.06); }
 
 /* status */
 .st { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; white-space: nowrap; }
@@ -625,31 +628,43 @@ function renderReport() {
   </div>`;
 }
 function ribbon(w, rows) {
-  const g = Array.from({ length: 7 }, () => new Float32Array(SPD)), who = Array.from({ length: 7 }, () => Array.from({ length: SPD }, () => ({})));
-  rows.forEach(r => r.runs.forEach(x => { const d = x.d - w * 7; for (let k = x.from; k < x.to; k++) { const v = (r.e.p[x.d * SPD + k] - r.e.allowed) * 0.25; g[d][k] += v; who[d][k][r.e.id] = (who[d][k][r.e.id] || 0) + v; } }));
-  const vals = []; g.forEach(a => a.forEach(v => v > 0.05 && vals.push(v)));
-  vals.sort((a, b) => a - b); const q = f => vals.length ? vals[Math.floor((vals.length - 1) * f)] : 1;
-  const T = [q(.25), q(.5), q(.8)], RAMP = ['#6b4823', '#a8651f', '#dd8a2c', '#ffb25c'];
-  const lvl = v => v < T[0] ? 0 : v < T[1] ? 1 : v < T[2] ? 2 : 3;
-  const W = 1000, x0 = 70, x1 = 74, cw = (W - x0 - x1) / SPD, rh = 15, gap = 4, H = 7 * (rh + gap) + 20;
-  const dayTot = g.map(a => a.reduce((s, v) => s + v, 0)), dmax = Math.max(...dayTot);
-  let cells = '';
-  for (let d = 0; d < 7; d++) {
-    const dd = w * 7 + d, y = d * (rh + gap), dt = dayDate(dd);
-    cells += `<text x="0" y="${y + 11.5}" font-size="11.5" fill="${workday(dd) ? 'var(--band-ink2)' : 'var(--band-ink)'}">${md(dt)} ${DOW[dt.getDay()]}${HOLIDAYS.has(iso(dt)) ? ' 휴일' : ''}</text>`;
-    let s = 0;
-    while (s < SPD) { const wk = isWork(dd, s); let t = s; while (t < SPD && isWork(dd, t) === wk && !(g[d][t] > 0.05)) t++; if (t === s) { t = s + 1; }
-      if (g[d][s] > 0.05) { const v = g[d][s], top = Object.entries(who[d][s]).sort((a, b) => b[1] - a[1]);
-        cells += `<rect class="w" x="${(x0 + s * cw).toFixed(1)}" y="${y}" width="${(cw - .6).toFixed(2)}" height="${rh}" rx="1" fill="${RAMP[lvl(v)]}" data-open="${top[0][0]}" data-tip="${md(dt)} ${DOW[dt.getDay()]} ${hhmm(s)}–${hhmm(s + 1)}<br><b>${fmt(v, 1)} kWh 낭비</b><br>${top.slice(0, 3).map(([id, kv]) => `${EQ[id].name} ${fmt(kv, 1)}`).join('<br>')}"/>`; }
-      else cells += `<rect x="${(x0 + s * cw).toFixed(1)}" y="${y}" width="${((t - s) * cw - .6).toFixed(1)}" height="${rh}" rx="1" fill="${wk ? '#1c335c' : '#15294b'}"/>`;
-      s = t; }
-    cells += `<text x="${W}" y="${y + 11.5}" font-size="11.5" text-anchor="end" fill="${dayTot[d] === dmax && dmax > 0 ? '#fff' : 'var(--band-ink2)'}" font-weight="${dayTot[d] === dmax && dmax > 0 ? 600 : 400}">${dayTot[d] > 0.5 ? fmt(dayTot[d], 0) + ' kWh' : '–'}</text>`;
-  }
-  const axis = [0, 6, 12, 18, 24].map(h => `<text x="${x0 + h * 4 * cw}" y="${H - 4}" font-size="11" text-anchor="${h === 0 ? 'start' : h === 24 ? 'end' : 'middle'}" fill="var(--band-ink2)">${String(h).padStart(2, '0')}시</text>`).join('');
+  const TOP = 8, list = rows.slice(0, TOP), rest = rows.length - list.length;
+  const LV = ['#8a541d', '#d07c1f', '#ffb25c'], IDLE_C = '#1b3054';
+  const W = 1000, xl = 186, xr = 84, cw = (W - xl - xr) / 168, rh = 34, hy = 22, H = hy + list.length * rh + 22;
+  const pattern = (r) => {
+    const byDay = Array(7).fill(0), hrs = [];
+    r.runs.forEach(x => { const d = x.d - w * 7; for (let k = x.from; k < x.to; k++) { byDay[d] += 1; if (workday(x.d)) hrs.push(k / 4); } });
+    const tot = byDay.reduce((a, b) => a + b, 0) || 1, wkEnd = byDay.reduce((a, v, d) => a + (workday(w * 7 + d) ? 0 : v), 0) / tot;
+    const nights = byDay.filter((v, d) => v > 0 && workday(w * 7 + d)).length;
+    if (nights >= 4 && wkEnd > .2) return '비가동 시간 내내';
+    if (nights >= 4 && hrs.every(h => h >= 3 && h < 7)) return '평일 이른 아침 반복';
+    if (nights >= 4) return '평일 야간 반복';
+    if (wkEnd > .7) return '주말 연속 운전';
+    return nights ? `평일 ${nights}일 야간` : '간헐';
+  };
+  const head = Array.from({ length: 7 }, (_, d) => { const dd = w * 7 + d, dt = dayDate(dd), x = xl + d * 24 * cw;
+    return `${d ? `<line x1="${x}" x2="${x}" y1="4" y2="${H - 22}" stroke="var(--band-line)"/>` : ''}<text x="${x + 12 * cw}" y="12" font-size="11.5" text-anchor="middle" fill="${workday(dd) ? 'var(--band-ink2)' : 'var(--band-ink)'}" font-weight="${workday(dd) ? 400 : 600}">${md(dt)} ${DOW[dt.getDay()]}${HOLIDAYS.has(iso(dt)) ? ' 휴일' : ''}</text>`; }).join('');
+  const body = list.map((r, i) => {
+    const y = hy + i * rh, cy = y + 7, ch = rh - 14, cnt = {}, kw = {};
+    r.runs.forEach(x => { for (let k = x.from; k < x.to; k++) { const key = (x.d - w * 7) * 24 + Math.floor(k / 4); cnt[key] = (cnt[key] || 0) + 1; kw[key] = (kw[key] || 0) + (r.e.p[x.d * SPD + k] - r.e.allowed) * .25; } });
+    let cells = '';
+    for (let c = 0; c < 168; c++) {
+      const d = Math.floor(c / 24), h = c % 24, dd = w * 7 + d, x = (xl + c * cw).toFixed(1), wd = (cw + .15).toFixed(2);
+      if (cnt[c]) { const dt = dayDate(dd);
+        cells += `<rect class="w" x="${x}" y="${cy}" width="${wd}" height="${ch}" fill="${LV[cnt[c] >= 4 ? 2 : cnt[c] === 3 ? 1 : 0]}" data-tip="${r.e.name}<br>${md(dt)} ${DOW[dt.getDay()]} ${String(h).padStart(2, '0')}–${String(h + 1).padStart(2, '0')}시<br><b>${fmt(kw[c], 1)} kWh 낭비</b> (15분 ${cnt[c]}칸)"/>`; }
+      else if (!isWork(dd, h * 4)) cells += `<rect x="${x}" y="${cy}" width="${wd}" height="${ch}" fill="${IDLE_C}"/>`;
+    }
+    return `<g class="hm-row" data-open="${r.e.id}"><rect class="hm-bg" x="-8" y="${y}" width="${W + 16}" height="${rh}" rx="4" fill="transparent"/>
+      <text x="0" y="${y + 15}" font-size="12.5" font-weight="600" fill="var(--band-ink)">${r.e.name}</text>
+      <text x="0" y="${y + 29}" font-size="11" fill="var(--band-ink2)">${pattern(r)}</text>${cells}
+      <text x="${W}" y="${y + 21}" font-size="12.5" font-weight="600" text-anchor="end" fill="#fff">${won(r.cost)}</text></g>`;
+  }).join('');
   const sw = c => `<i style="background:${c}"></i>`;
-  return `<div class="rb-head"><b>15분 단위 낭비 분포</b><span>칸을 누르면 그 시간에 가장 많이 낭비한 설비가 열립니다</span>
-      <div class="rb-key"><span>${sw('#1c335c')}가동 시간</span><span>${sw('#15294b')}비가동 정상</span><span>낭비 <span class="ramp">${RAMP.map(sw).join('')}</span> 많음</span></div></div>
-    <svg class="chart ribbon" viewBox="0 0 ${W} ${H}" role="img" aria-label="요일별 15분 단위 낭비 분포. 가장 많은 날 ${fmt(dmax, 0)} kWh">${cells}${axis}</svg>`;
+  return `<div class="rb-head"><b>설비별 주간 낭비 패턴</b><span>1시간 단위, 금액 순 상위 ${list.length}대. 행을 누르면 상세가 열립니다</span>
+      <div class="rb-key"><span><i style="background:transparent;box-shadow:inset 0 0 0 1px var(--band-line)"></i>가동 시간</span><span>${sw(IDLE_C)}비가동 정상</span><span>낭비 (한 시간 중) <span class="ramp">${LV.map(sw).join('')}</span> 일부→내내</span></div></div>
+    <svg class="chart ribbon" viewBox="0 0 ${W} ${H}" role="img" aria-label="설비별 요일·시간대 낭비 패턴">${head}${body}
+      <text x="${xl}" y="${H - 4}" font-size="11" fill="var(--band-ink2)">각 요일 칸은 00시부터 24시까지</text>
+      ${rest > 0 ? `<text x="${W}" y="${H - 4}" font-size="11" text-anchor="end" fill="var(--band-ink2)">외 ${rest}대는 아래 목록에서</text>` : ''}</svg>`;
 }
 function todoSection(rows, owner, tot, cost, ptot) {
   const its = todoItems(rows);
