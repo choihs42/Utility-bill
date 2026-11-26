@@ -74,7 +74,9 @@ main { padding: 0 32px 72px; max-width: 1440px; }
 .crumb span { margin: 0 6px; color: #c3c8d0; }
 .ptitle { display: flex; align-items: baseline; gap: 14px; margin-top: 4px; }
 .ptitle h1 { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -.4px; }
-.ptitle p { margin: 0; color: var(--ink3); font-size: 13px; }
+.ptitle { align-items: center !important; }
+.ptitle .info { color: var(--ink3); display: inline-flex; cursor: help; border-radius: 50%; }
+.ptitle .info:hover, .ptitle .info:focus-visible { color: var(--primary); }
 .tabs { display: flex; align-items: center; gap: 22px; border-bottom: 1px solid var(--line); margin-top: 14px; }
 .tabs button { border: 0; background: none; padding: 10px 0 11px; font-size: 13.5px; color: var(--ink2); border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .tabs button:hover { color: var(--ink); }
@@ -157,6 +159,20 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
 
 /* todo list */
 .ai-line { margin: 6px 0 0; font-size: 13px; color: var(--ink2); }
+.todo2 { list-style: none; margin: 12px 0 0; padding: 0; display: grid; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); }
+.todo2 li { display: flex; flex-direction: column; gap: 6px; padding: 16px 22px 18px; border-left: 1px solid var(--line-soft); cursor: pointer; min-width: 0; }
+.todo2 li:first-child { border-left: 0; padding-left: 0; }
+.todo2 li:hover .t-ti { color: var(--primary); }
+.todo2 li:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.todo2 .t-top { display: flex; align-items: center; justify-content: space-between; }
+.todo2 .no { width: 22px; height: 22px; border-radius: 50%; background: var(--band); color: #fff; display: grid; place-items: center; font-size: 11.5px; font-weight: 600; }
+.todo2 .own { font-size: 12.5px; color: var(--ink3); }
+.todo2 .t-ti { font-size: 15.5px; font-weight: 650; letter-spacing: -.2px; line-height: 1.4; margin-top: 4px; }
+.todo2 .t-how { font-size: 13.5px; color: var(--ink2); line-height: 1.55; }
+.todo2 .t-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 10px; }
+.todo2 .t-amt { font-family: var(--num); font-size: 24px; font-weight: 600; }
+.todo2 .t-amt small { font-family: 'Pretendard Variable', sans-serif; font-size: 12.5px; color: var(--ink3); font-weight: 500; margin-left: 4px; }
+.cmeta b { color: var(--ink); font-weight: 600; }
 .todo { list-style: none; margin: 12px -10px 0; padding: 0; border-top: 1px solid var(--line); }
 .todo li { display: grid; grid-template-columns: 28px minmax(0, 1fr) 120px auto; gap: 14px; align-items: center; padding: 12px 10px; border-bottom: 1px solid var(--line-soft); }
 .todo li:last-child { border-bottom: 0; }
@@ -173,7 +189,7 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
 .tbl th { text-align: left; font-size: 12px; font-weight: 500; color: var(--ink3); padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--surface); white-space: nowrap; position: sticky; top: var(--top); z-index: 1; }
 .tbl th:first-child, .tbl td:first-child { padding-left: 10px; }
 .tbl th:last-child, .tbl td:last-child { padding-right: 10px; }
-.tbl td { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; font-size: 13px; vertical-align: middle; }
+.tbl td { padding: 14px 12px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; font-size: 13px; vertical-align: middle; }
 .tbl tr:last-child td { border-bottom: 0; }
 .tbl th.num, .tbl td.num { text-align: right; }
 .tbl tbody tr.row { cursor: pointer; }
@@ -182,7 +198,9 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
 .tbl tbody tr.sel td { background: var(--primary-weak) !important; }
 .tbl .nm b { font-weight: 600; }
 .tbl .nm span { display: block; font-size: 12px; color: var(--ink3); }
-.tbl .acts { display: flex; gap: 4px; justify-content: flex-end; opacity: .55; transition: opacity .12s; }
+.tbl .acts { display: flex; gap: 4px; justify-content: flex-end; opacity: 0; transition: opacity .12s; }
+.tbl td.nm b { font-size: 14px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .tbl tr:hover .acts, .tbl tr.sel .acts, .tbl .acts:focus-within { opacity: 1; }
 .bar { height: 4px; border-radius: 2px; background: var(--waste); min-width: 3px; }
 .flag { font-size: 11px; color: var(--warn); border: 1px solid #ecd6b3; background: #fdf7ec; border-radius: 4px; padding: 0 5px; margin-left: 6px; font-weight: 500; }
@@ -230,6 +248,11 @@ textarea { width: 100%; resize: vertical; line-height: 1.5; }
 .dl { display: grid; grid-template-columns: 210px 1fr; margin: 0; font-size: 13px; }
 .dl dt, .dl dd { margin: 0; padding: 7px 0; border-bottom: 1px dashed var(--line-soft); }
 .dl dt { color: var(--ink3); }
+.why { margin-top: 10px; }
+.why summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--primary); font-weight: 500; }
+.why summary::-webkit-details-marker { display: none; }
+.why[open] summary .ic { transform: rotate(90deg); }
+.why .dl { margin-top: 8px; }
 .concl { margin-top: 12px; font-size: 13.5px; line-height: 1.6; display: grid; grid-template-columns: 210px 1fr; }
 .concl > b { font-weight: 600; }
 .concl b { font-weight: 600; }
@@ -601,36 +624,34 @@ function renderReport() {
     ${ribbon(w, rows)}
   </section>
   ${todoSection(rows, owner, tot, cost, ptot)}
-  <div class="${owner ? 'stack' : 'grid2'}">
+  <div class="grid2">
     <section class="card">
-      <div class="chead"><h2>${owner ? '내 설비' : '낭비 설비'}</h2><span class="count">${rows.length}</span><span class="cmeta">금액 순</span></div>
+      <div class="chead"><h2>${owner ? '내 설비' : '낭비 설비'}</h2><span class="count">${rows.length}</span><span class="cmeta">금액 순, 행에 올리면 조치 버튼</span></div>
       <table class="tbl">
-        <thead><tr><th>설비</th>${owner ? '' : '<th>담당</th>'}<th class="num">낭비 시간</th><th class="num">낭비량</th><th class="num">금액</th><th style="width:70px"></th><th>상태</th><th class="num">조치</th></tr></thead>
+        <thead><tr><th>설비</th>${owner ? '' : '<th>담당</th>'}<th class="num">낭비 시간</th><th class="num">금액</th><th style="padding-left:28px">상태</th><th class="num"><span class="sr">조치</span></th></tr></thead>
         <tbody>${rows.map(r => {
           const st = STATUS_NOW(r.e.id), cf = CONF[r.e.id] || 0.8, sel = STATE.sheet?.type === 'eq' && STATE.sheet.id === r.e.id;
           return `<tr class="row${sel ? ' sel' : ''}" data-open="${r.e.id}">
-            <td class="nm"><b>${r.e.name}</b>${cf < 0.85 ? `<span class="flag" style="display:inline" title="AI 낭비 판정 신뢰도 ${Math.round(cf * 100)}%">확인 권장</span>` : ''}<span>${r.e.zone}<i class="sep">/</i>${r.e.dept}</span></td>
+            <td class="nm"><b>${r.e.name}</b>${cf < 0.85 ? `<span class="flag" style="display:inline" title="AI 낭비 판정 신뢰도 ${Math.round(cf * 100)}%">확인 권장</span>` : ''}</td>
             ${owner ? '' : `<td>${r.e.owner}</td>`}
             <td class="num">${fmt(r.hours, 1)} h</td>
-            <td class="num">${fmt(r.kwh, 0)} kWh</td>
             <td class="num"><b style="font-weight:600">${won(r.cost)}</b></td>
-            <td><div class="bar" style="width:${Math.max(4, r.cost / max * 100)}%"></div></td>
-            <td>${stat(st)}</td>
+            <td style="padding-left:28px">${stat(st)}</td>
             <td><div class="acts">${['todo', 'new'].includes(st) ? `<button class="btn sm" data-act="done" data-id="${r.e.id}">${ic('check', 14)}조치함</button><button class="btn sm ghost" data-act="free" data-id="${r.e.id}">다른 사유</button>` : `<button class="btn sm ghost" data-act="undo" data-id="${r.e.id}">되돌리기</button>`}</div></td>
-          </tr>`; }).join('') || `<tr><td colspan="8" class="empty">이번 주 낭비로 잡힌 설비가 없습니다.</td></tr>`}</tbody>
+          </tr>`; }).join('') || `<tr><td colspan="6" class="empty">이번 주 낭비로 잡힌 설비가 없습니다.</td></tr>`}</tbody>
       </table>
       ${exclBlock(w)}
     </section>
-    ${owner ? '' : `<div class="stack">
-      <section class="card"><div class="chead"><h2>부서별 낭비 금액</h2></div><div class="cbody">${deptChart(everyone)}</div></section>
-      <section class="card"><div class="chead"><h2>주별 낭비량</h2><span class="cmeta">최근 12주, MWh</span></div><div class="cbody">${trendChart(w)}</div></section>
-    </div>`}
+    <div class="stack">
+      ${owner ? '' : `<section class="card"><div class="chead"><h2>부서별 낭비 금액</h2></div><div class="cbody">${deptChart(everyone)}</div></section>`}
+      <section class="card"><div class="chead"><h2>${owner ? '내 설비 ' : ''}주별 낭비량</h2><span class="cmeta">최근 12주, MWh</span></div><div class="cbody">${trendChart(w)}</div></section>
+    </div>
   </div>`;
 }
 function ribbon(w, rows) {
   const TOP = 8, list = rows.slice(0, TOP), rest = rows.length - list.length;
   const LV = ['#8a541d', '#d07c1f', '#ffb25c'], IDLE_C = '#1b3054';
-  const W = 1000, xl = 186, xr = 84, cw = (W - xl - xr) / 168, rh = 34, hy = 22, H = hy + list.length * rh + 22;
+  const W = 1000, xl = 186, xr = 84, cw = (W - xl - xr) / 168, rh = 36, hy = 22, H = hy + list.length * rh + (rest > 0 ? 22 : 4);
   const pattern = (r) => {
     const byDay = Array(7).fill(0), hrs = [];
     r.runs.forEach(x => { const d = x.d - w * 7; for (let k = x.from; k < x.to; k++) { byDay[d] += 1; if (workday(x.d)) hrs.push(k / 4); } });
@@ -660,26 +681,22 @@ function ribbon(w, rows) {
       <text x="${W}" y="${y + 21}" font-size="12.5" font-weight="600" text-anchor="end" fill="#fff">${won(r.cost)}</text></g>`;
   }).join('');
   const sw = c => `<i style="background:${c}"></i>`;
-  return `<div class="rb-head"><b>설비별 주간 낭비 패턴</b><span>1시간 단위, 금액 순 상위 ${list.length}대. 행을 누르면 상세가 열립니다</span>
-      <div class="rb-key"><span><i style="background:transparent;box-shadow:inset 0 0 0 1px var(--band-line)"></i>가동 시간</span><span>${sw(IDLE_C)}비가동 정상</span><span>낭비 (한 시간 중) <span class="ramp">${LV.map(sw).join('')}</span> 일부→내내</span></div></div>
+  return `<div class="rb-head"><b>설비별 주간 낭비 패턴</b>
+      <div class="rb-key"><span>${sw(IDLE_C)}비가동 정상</span><span>낭비 <span class="ramp">${LV.map(sw).join('')}</span></span></div></div>
     <svg class="chart ribbon" viewBox="0 0 ${W} ${H}" role="img" aria-label="설비별 요일·시간대 낭비 패턴">${head}${body}
-      <text x="${xl}" y="${H - 4}" font-size="11" fill="var(--band-ink2)">각 요일 칸은 00시부터 24시까지</text>
       ${rest > 0 ? `<text x="${W}" y="${H - 4}" font-size="11" text-anchor="end" fill="var(--band-ink2)">외 ${rest}대는 아래 목록에서</text>` : ''}</svg>`;
 }
 function todoSection(rows, owner, tot, cost, ptot) {
   const its = todoItems(rows);
-  const ch = ptot ? (tot - ptot) / ptot * 100 : 0;
-  const head = `지난주 ${owner ? '내 설비의 ' : ''}낭비는 ${fmt(tot / 1000, 1)} MWh(약 ${man(cost)}만 원)로 전주보다 ${Math.abs(ch).toFixed(0)}% ${ch >= 0 ? '늘었습니다' : '줄었습니다'}.`;
-  if (!its.length) return `<section class="card"><div class="chead"><h2>이번 주 할 일</h2><span class="aitag">AI</span></div><p class="ai-line" style="padding-bottom:16px">${head} 처리할 일은 모두 끝났습니다.</p></section>`;
+  if (!its.length) return `<section class="card"><div class="chead"><h2>이번 주 할 일</h2><span class="aitag">AI 추천</span></div><p class="empty" style="text-align:left">이번 주 처리할 일은 모두 끝났습니다.</p></section>`;
   const sum = its.reduce((a, x) => a + x.cost, 0);
   return `<section class="card">
-    <div class="chead"><h2>이번 주 할 일</h2><span class="aitag">AI 추천</span><span class="cmeta">${its.length}가지 처리 시 주 ${man(sum)}만 원 · 연 약 ${manR(sum * 52)}만 원 절감</span></div>
-    <p class="ai-line">${head} 금액, 조치 난이도, 한 번에 묶어 처리할 수 있는지를 보고 골랐습니다.</p>
-    <ol class="todo">${its.map((x, i) => `<li>
-      <span class="no">${i + 1}</span>
-      <div class="tx"><b>${x.t}</b><span title="${x.why}">${x.why} → ${x.how}</span></div>
-      <div class="tc"><b>주 ${won(x.cost)}</b><span>${x.owner}</span></div>
-      <div class="ta">${x.sim ? `<button class="btn sm" data-sim="${x.sim}">${ic('sliders', 14)}시뮬레이션</button>` : ''}<button class="btn sm ghost" data-open="${x.eq}">열기 ${ic('right', 14)}</button></div>
+    <div class="chead"><h2>이번 주 할 일</h2><span class="aitag">AI 추천</span><span class="cmeta">모두 처리하면 연 약 <b>${manR(sum * 52)}만 원</b> 절감</span></div>
+    <ol class="todo2" style="grid-template-columns:repeat(${Math.max(its.length, 2)}, minmax(0, 1fr))">${its.map((x, i) => `<li data-open="${x.eq}" title="${x.why}">
+      <div class="t-top"><span class="no">${i + 1}</span><span class="own">${x.owner}</span></div>
+      <b class="t-ti">${x.t}</b>
+      <span class="t-how">${x.how}</span>
+      <div class="t-foot"><b class="t-amt">${won(x.cost)}<small>/ 주</small></b>${x.sim ? `<button class="btn sm" data-sim="${x.sim}">${ic('sliders', 14)}시뮬레이션</button>` : ''}</div>
     </li>`).join('')}</ol>
   </section>`;
 }
@@ -772,7 +789,7 @@ function sheetEq(id) {
   const simMap = { E01: 'p1', E02: 'p1', E03: 'p1', E05: 'p2', E04: 'p3', E07: 'p5' };
   let actions;
   if (st === 'exc') actions = `<span class="hint">예외 등록됨 · ${STATE.status[e.id].note}</span><button class="btn sm" data-act="undo" data-id="${e.id}">예외 해제</button>`;
-  else if (['todo', 'new'].includes(st) && r.kwh > 1) actions = `<button class="btn primary" data-act="done" data-id="${e.id}">${ic('check', 15)}차단 조치함</button><button class="btn" data-act="free" data-id="${e.id}">다른 사유</button><span class="hint">꺼지면 안 되는 이유나 현장 확인이 필요하면 '다른 사유'</span>`;
+  else if (['todo', 'new'].includes(st) && r.kwh > 1) actions = `<button class="btn primary" data-act="done" data-id="${e.id}">${ic('check', 15)}차단 조치함</button><button class="btn" data-act="free" data-id="${e.id}" title="꺼지면 안 되는 이유가 있거나 현장 확인이 필요할 때">다른 사유</button>`;
   else if (st === 'done' || st === 'check') actions = `<span class="hint">${ST[st][0]} · ${STATE.status[e.id]?.at || ''}</span><button class="btn sm ghost" data-act="undo" data-id="${e.id}">되돌리기</button>`;
   else actions = `<span class="hint">처리할 항목이 없습니다.</span>`;
   if (simMap[e.id] && r.kwh > 1) actions += `<button class="btn ghost" style="margin-left:auto" data-sim="${simMap[e.id]}">${ic('sliders', 14)}조치 시뮬레이션</button>`;
@@ -785,19 +802,21 @@ function sheetEq(id) {
         <div><label>담당</label><b>${e.owner}</b></div>
         <div><label>허용 비가동 부하</label><b class="n">${fmt(e.allowed, 1)} kW</b><span>${e.confirmNote ? `제안 ${fmt(e.suggested, 1)} → 에너지팀 확정` : `자동 제안 ${fmt(e.suggested, 1)} kW`}</span></div>
         <div><label>지난주 낭비</label><b class="n">${won(r.cost)}</b><span>${fmt(r.kwh, 0)} kWh</span></div>
-        <div><label>낭비 시간</label><b class="n">${fmt(r.hours, 1)} h</b><span>${r.runs.length}개 구간</span></div>
+        <div><label>낭비 시간</label><b class="n">${fmt(r.hours, 1)} h</b></div>
       </div>
       <div class="actbar">${actions}</div>
       <div class="sec">
         <h3>지난주 15분 전력 <span class="r small muted">${weekLabel(w)}</span></h3>
-        <div class="legend"><span><i class="ln" style="background:var(--series)"></i>전력</span><span><i class="hatch"></i>비가동 시간</span><span><i class="dash"></i>허용 부하</span><span><i style="background:var(--waste);opacity:.6"></i>낭비 (허용 초과분)</span></div>
+        <div class="legend"><span><i class="ln" style="background:var(--series)"></i>전력</span><span><i class="hatch"></i>비가동 시간</span><span><i class="dash"></i>허용 부하</span><span><i style="background:var(--waste);opacity:.6"></i>낭비</span></div>
         ${loadChart(e, w)}
       </div>
       <div class="sec ai-sec">
         <h3>판정 근거 <span class="aitag">AI 조사</span><span class="r small muted">판정 ${v.verdict}${v.verdict !== '정상' ? `, 신뢰도 ${Math.round((CONF[e.id] || 0.8) * 100)}%` : ''}</span></h3>
-        <dl class="dl">${v.S.map(([q, a]) => `<dt>${q}</dt><dd>${a}</dd>`).join('')}</dl>
-        <div class="concl"><b>결론</b><span>${v.concl}</span></div>
-        ${e.confirmNote ? `<div class="small muted" style="margin-top:6px">허용 부하 확정 사유: ${e.confirmNote}</div>` : ''}
+        <p class="lead" style="margin-top:10px">${v.concl}</p>
+        <details class="why"><summary>${ic('right', 14)}근거 ${v.S.length}건 보기</summary>
+          <dl class="dl">${v.S.map(([q, a]) => `<dt>${q}</dt><dd>${a}</dd>`).join('')}</dl>
+          ${e.confirmNote ? `<div class="small muted" style="margin-top:6px">허용 부하 확정 사유: ${e.confirmNote}</div>` : ''}
+        </details>
       </div>
       <div class="two">
         <div class="sec"><h3>주별 낭비량 <span class="r small muted">kWh</span></h3>${eqTrend(WASTE[WI[e.id]].map(x => x.kwh), e)}</div>
@@ -1195,7 +1214,7 @@ function renderSheet() {
   sh.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const r = answer(b.dataset.q); STATE.chat.push({ me: true, t: b.dataset.q }, { t: r.a, src: r.src }); renderSheet(); $('#chat').scrollTop = 1e6; if (r.act) setTimeout(r.act, 400); });
 }
 function bindCommon(root) {
-  root.querySelectorAll('[data-open]').forEach(el => { if (el.tagName === 'TR') el.tabIndex = 0; el.addEventListener('click', ev => { if (ev.target.closest('[data-act], [data-sim]')) return; openSheet({ type: 'eq', id: el.dataset.open }); }); el.addEventListener('keydown', ev => { if (ev.key === 'Enter' && ev.target === el) openSheet({ type: 'eq', id: el.dataset.open }); }); });
+  root.querySelectorAll('[data-open]').forEach(el => { if (el.tagName === 'TR' || el.tagName === 'LI') el.tabIndex = 0; el.addEventListener('click', ev => { if (ev.target.closest('[data-act], [data-sim]')) return; openSheet({ type: 'eq', id: el.dataset.open }); }); el.addEventListener('keydown', ev => { if (ev.key === 'Enter' && ev.target === el) openSheet({ type: 'eq', id: el.dataset.open }); }); });
   root.querySelectorAll('[data-act]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const id = b.dataset.id, a = b.dataset.act;
     if (a === 'done') askDone(id); else if (a === 'free') askFree(id); else { undo(id); render(); } });
   root.querySelectorAll('[data-sim]').forEach(b => b.onclick = ev => { ev.stopPropagation(); STATE.simCustom = null; go('sim', { sim: b.dataset.sim }); });
@@ -1215,7 +1234,7 @@ function render() {
   let body = STATE.page === 'report' ? renderReport() : STATE.page === 'sim' ? renderSim() : renderEffect();
   $('#main').innerHTML = `<div class="phead">
       <div class="crumb">에너지 관리<span>/</span>비가동 낭비</div>
-      <div class="ptitle"><h1>비가동 낭비</h1><p>${titles[STATE.page]}</p></div>
+      <div class="ptitle"><h1>비가동 낭비</h1><span class="info" tabindex="0" data-tip="${titles[STATE.page]}" aria-label="${titles[STATE.page]}">${ic('info', 16)}</span></div>
       <div class="tabs">${Object.entries(PAGES).map(([k, v]) => `<button data-page="${k}" class="${STATE.page === k ? 'on' : ''}">${k === 'effect' && owner ? '내 조치 효과' : v}</button>`).join('')}<div class="tr">${right}</div></div>
     </div><div class="pbody">${body}</div>`;
   const m = $('#main');
