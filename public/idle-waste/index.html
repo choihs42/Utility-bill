@@ -3,196 +3,299 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>CEMS 비가동 낭비 탐지 · UX 데모</title>
+<title>비가동 낭비 · CEMS</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <style>
-  :root {
-    --bg: #f5f6f8; --card: #ffffff; --line: #e3e6eb; --line2: #eef0f3;
-    --ink: #1b1f27; --ink2: #5a6271; --ink3: #8a919e;
-    --accent: #2f6fed; --accent-weak: #eaf1fe;
-    --waste: #d4791c; --waste-weak: #fdf1e4;
-    --good: #1f8f4e; --good-weak: #e7f5ec;
-    --warn: #b7791f; --warn-weak: #fdf5e3;
-    --crit: #c73b3b; --crit-weak: #fbeaea;
-    --gray-weak: #f0f1f4;
-    --ai: #6b4fd8; --ai-weak: #f2effd;
-    --r: 10px;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Pretendard Variable', Pretendard, -apple-system, 'Malgun Gothic', sans-serif; font-size: 14px; }
-  button { font-family: inherit; font-size: inherit; cursor: pointer; }
-  .topbar { height: 56px; background: #141a26; color: #fff; display: flex; align-items: center; padding: 0 24px; gap: 28px; position: sticky; top: 0; z-index: 20; }
-  .brand { font-weight: 700; letter-spacing: -0.2px; display: flex; gap: 10px; align-items: center; }
-  .brand small { font-weight: 500; color: #9fb0cc; }
-  .nav { display: flex; gap: 4px; height: 100%; }
-  .nav button { background: none; border: 0; color: #b8c3d6; padding: 0 14px; height: 100%; border-bottom: 2px solid transparent; font-weight: 500; }
-  .nav button.on { color: #fff; border-bottom-color: #5b8cff; }
-  .topright { margin-left: auto; display: flex; gap: 10px; align-items: center; }
-  .seg { display: inline-flex; background: #232b3b; border-radius: 8px; padding: 3px; }
-  .seg button { background: none; border: 0; color: #b8c3d6; padding: 6px 12px; border-radius: 6px; font-size: 13px; }
-  .seg button.on { background: #fff; color: #141a26; font-weight: 600; }
-  .iconbtn { background: #232b3b; border: 0; color: #dfe6f3; height: 32px; padding: 0 12px; border-radius: 8px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
-  .demo-note { background: #fff8e6; border-bottom: 1px solid #f1e2b8; color: #7a5b12; font-size: 12.5px; padding: 7px 24px; }
-  main { padding: 20px 24px 100px; max-width: 1360px; margin: 0 auto; }
-  .pagehead { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 16px; }
-  .pagehead h1 { font-size: 20px; margin: 0; letter-spacing: -0.3px; }
-  .pagehead .sub { color: var(--ink2); font-size: 13px; margin-top: 4px; }
-  .pagehead .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-  select, input, textarea { font-family: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; background: #fff; color: var(--ink); }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; }
-  .card h2 { font-size: 15px; margin: 0 0 4px; letter-spacing: -0.2px; }
-  .card .cap { color: var(--ink3); font-size: 12px; margin-bottom: 12px; }
-  .grid { display: grid; gap: 14px; }
-  .kpis { grid-template-columns: repeat(5, 1fr); margin-bottom: 14px; }
-  .kpi .lab { color: var(--ink2); font-size: 12.5px; }
-  .kpi .val { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-top: 6px; }
-  .kpi .val small { font-size: 13px; font-weight: 500; color: var(--ink2); margin-left: 3px; }
-  .kpi .delta { font-size: 12px; margin-top: 4px; color: var(--ink2); }
-  .up { color: var(--crit); } .down { color: var(--good); }
-  .ai { border: 1px solid #ddd5fb; background: linear-gradient(180deg, var(--ai-weak), #fff 80%); border-radius: var(--r); padding: 14px 18px; margin-bottom: 14px; }
-  .ai .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; color: var(--ai); background: #fff; border: 1px solid #ddd5fb; border-radius: 20px; padding: 2px 9px; }
-  .ai p { margin: 8px 0 0; line-height: 1.6; font-size: 14.5px; }
-  .ai .foot { margin-top: 8px; font-size: 12px; color: var(--ink3); display: flex; gap: 12px; align-items: center; }
-  .linkbtn { background: none; border: 0; color: var(--accent); padding: 0; font-size: 12px; }
-  .ai .basis { display: none; margin-top: 8px; font-size: 12px; color: var(--ink2); background: #fff; border: 1px dashed #d9d2f6; border-radius: 8px; padding: 8px 10px; font-family: ui-monospace, Menlo, monospace; white-space: pre-wrap; }
-  .ai.open .basis { display: block; }
-  .two { grid-template-columns: 1.7fr 1fr; align-items: start; }
-  table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; font-size: 12px; color: var(--ink2); font-weight: 500; padding: 8px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  td { white-space: nowrap; padding: 11px 8px; border-bottom: 1px solid var(--line2); vertical-align: middle; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-  tr.row { cursor: pointer; } tr.row:hover td { background: #fafbfc; }
-  .eqname { font-weight: 600; }
-  .eqsub { font-size: 12px; color: var(--ink3); margin-top: 2px; }
-  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
-  .chip.todo { background: var(--crit-weak); color: var(--crit); }
-  .chip.done { background: var(--good-weak); color: var(--good); }
-  .chip.exc { background: var(--gray-weak); color: var(--ink2); }
-  .chip.check { background: var(--warn-weak); color: var(--warn); }
-  .chip.new { background: var(--accent-weak); color: var(--accent); }
-  .chip.wait { background: var(--gray-weak); color: var(--ink2); }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
-  .acts { display: flex; gap: 6px; }
-  .btn { border: 1px solid var(--line); background: #fff; color: var(--ink); border-radius: 7px; padding: 6px 10px; font-size: 12.5px; white-space: nowrap; }
-  .btn:hover { border-color: #c9ced6; }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-  .btn.ghost { border-color: transparent; color: var(--ink2); }
-  .bar-cell { width: 70px; }
-  .minibar { height: 6px; border-radius: 3px; background: var(--waste); }
-  .chart { width: 100%; display: block; }
-  .tip { position: fixed; pointer-events: none; background: #141a26; color: #fff; font-size: 12px; padding: 7px 10px; border-radius: 7px; z-index: 50; display: none; line-height: 1.5; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
-  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--ink2); margin-bottom: 6px; flex-wrap: wrap; }
-  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -2px; }
-  .legend i.ln { height: 2px; border-radius: 1px; vertical-align: 3px; }
-  .legend i.dash { height: 0; border-top: 2px dashed var(--ink2); background: none; vertical-align: 3px; }
-  .muted { color: var(--ink2); }
-  .small { font-size: 12px; }
-  .todo-banner { display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--crit); border-radius: var(--r); padding: 12px 16px; margin-bottom: 14px; }
-  .todo-banner b { font-size: 15px; }
-  .eqhead { display: flex; align-items: flex-start; gap: 16px; }
-  .eqhead .meta { display: grid; grid-template-columns: repeat(4, auto); gap: 4px 28px; margin-top: 10px; font-size: 13px; }
-  .eqhead .meta span { color: var(--ink3); font-size: 12px; display: block; }
-  .actbox { display: flex; flex-direction: column; gap: 8px; min-width: 220px; }
-  .actbox .btn { padding: 9px 12px; text-align: left; }
-  .hist li { padding: 7px 0; border-bottom: 1px solid var(--line2); font-size: 13px; list-style: none; display: flex; gap: 10px; }
-  .hist { padding: 0; margin: 0; }
-  .hist .when { color: var(--ink3); width: 86px; flex-shrink: 0; }
-  .stat-big { font-size: 30px; font-weight: 700; letter-spacing: -0.5px; }
-  .modal-bg { position: fixed; inset: 0; background: rgba(20,26,38,.38); display: none; align-items: center; justify-content: center; z-index: 40; }
-  .modal { background: #fff; border-radius: 12px; width: 440px; padding: 22px; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
-  .modal h3 { margin: 0 0 4px; font-size: 16px; }
-  .modal label { display: block; font-size: 12.5px; color: var(--ink2); margin: 12px 0 5px; }
-  .modal input, .modal select, .modal textarea { width: 100%; }
-  .modal .row-end { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-  .toast { position: fixed; right: 24px; top: 76px; width: 380px; background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--waste); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.16); padding: 14px 16px; z-index: 45; display: none; }
-  .toast .t1 { font-size: 12px; color: var(--ink3); display: flex; justify-content: space-between; }
-  .toast .t2 { font-weight: 700; margin: 6px 0 4px; }
-  .toast .t3 { font-size: 13px; color: var(--ink2); line-height: 1.55; }
-  .toast .acts { margin-top: 10px; }
-  .drawer { position: fixed; top: 56px; right: 0; bottom: 0; width: 400px; background: #fff; border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0,0,0,.08); z-index: 30; display: none; flex-direction: column; }
-  .drawer .dh { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; }
-  .drawer .dh b { font-size: 15px; }
-  .drawer .dbody { flex: 1; overflow: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-  .msg { max-width: 88%; padding: 10px 12px; border-radius: 12px; line-height: 1.55; font-size: 13.5px; }
-  .msg.me { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
-  .msg.bot { align-self: flex-start; background: var(--gray-weak); border-bottom-left-radius: 4px; }
-  .msg.bot .src { font-size: 11.5px; color: var(--ink3); margin-top: 6px; }
-  .sugg { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px; border-top: 1px solid var(--line); }
-  .sugg button { border: 1px solid #ddd5fb; background: var(--ai-weak); color: var(--ai); border-radius: 16px; padding: 5px 10px; font-size: 12.5px; }
-  .dfoot { padding: 10px 16px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--ink3); }
-  .askbtn { position: fixed; right: 24px; bottom: 24px; background: var(--ai); color: #fff; border: 0; border-radius: 24px; padding: 11px 16px; font-weight: 600; box-shadow: 0 6px 18px rgba(107,79,216,.35); z-index: 25; }
-  .hidden { display: none !important; }
-  body.dopen main { padding-right: 424px; max-width: none; }
-  .flow { display: flex; gap: 0; align-items: stretch; margin-top: 4px; }
-  .flow div { flex: 1; text-align: center; font-size: 12px; padding: 8px 4px; background: var(--gray-weak); color: var(--ink2); position: relative; }
-  .flow div.on { background: var(--accent-weak); color: var(--accent); font-weight: 600; }
-  .flow div + div { margin-left: 3px; }
-  .todo3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 10px; }
-  .todo3 .it { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
-  .todo3 .no { font-size: 12px; font-weight: 700; color: var(--ai); }
-  .todo3 .tt { font-weight: 700; font-size: 14.5px; }
-  .todo3 .why { font-size: 13px; color: var(--ink2); line-height: 1.5; }
-  .todo3 .how { font-size: 13px; line-height: 1.5; }
-  .todo3 .meta { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--ink3); margin-top: auto; padding-top: 6px; }
-  .todo3 .meta b { color: var(--ink); font-size: 13px; }
-  .conf { font-size: 11.5px; color: var(--ai); background: #fff; border: 1px solid #ddd5fb; border-radius: 10px; padding: 1px 7px; font-weight: 600; }
-  .excl { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 12px; }
-  .excl summary { cursor: pointer; font-size: 13px; color: var(--ink2); }
-  .excl .xrow { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0 2px; font-size: 13px; }
-  .steps { list-style: none; padding: 0; margin: 10px 0 0; }
-  .steps li { display: grid; grid-template-columns: 22px 230px 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px dashed #e6e1fa; font-size: 13.5px; align-items: baseline; }
-  .steps li:last-child { border-bottom: 0; }
-  .steps .ck { color: var(--ai); font-weight: 700; }
-  .steps .q { color: var(--ink2); }
-  .concl { margin-top: 10px; background: #fff; border: 1px solid #ddd5fb; border-radius: 8px; padding: 10px 12px; line-height: 1.6; }
-  .parsed { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
-  .parsed .pc { border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 13px; display: flex; gap: 10px; align-items: flex-start; }
-  .simform { display: grid; grid-template-columns: repeat(6, auto) 1fr; gap: 8px 10px; align-items: end; }
-  .simform label { font-size: 12px; color: var(--ink2); display: block; margin-bottom: 4px; }
-  .nlbox { display: flex; gap: 8px; margin-top: 4px; }
-  .nlbox input { flex: 1; padding: 10px 12px; font-size: 14px; border-color: #d9d2f6; }
-  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-  .presets button { border: 1px solid var(--line); background: #fff; border-radius: 16px; padding: 6px 11px; font-size: 12.5px; color: var(--ink); }
-  .presets button.on { border-color: var(--accent); background: var(--accent-weak); color: var(--accent); font-weight: 600; }
-  .warnline { font-size: 12.5px; color: var(--warn); background: var(--warn-weak); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
-  .modal.wide { width: 560px; }
+/* ---------- tokens ---------- */
+:root {
+  --bg: #f4f5f7; --surface: #fff; --sunken: #f8f9fb;
+  --line: #e3e6eb; --line-soft: #eef0f3;
+  --ink: #161b26; --ink2: #4a5262; --ink3: #8b93a2;
+  --brand: #1e3a6e; --primary: #2453c4; --primary-weak: #eef3fd; --primary-line: #c9d6f2;
+  --series: #2f6fed; --waste: #d4791c; --waste-weak: #fcf1e5;
+  --crit: #c2332f; --good: #1d7a45; --warn: #a3620f; --mute: #8b93a2;
+  --r: 8px; --r-sm: 6px;
+  --shadow: 0 1px 2px rgba(16,24,40,.04);
+  --shadow-lg: 0 12px 32px rgba(16,24,40,.14);
+  --side: 232px; --top: 52px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Pretendard Variable', Pretendard, -apple-system, 'Malgun Gothic', sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+.n, td.num, .num { font-variant-numeric: tabular-nums; }
+.ic { flex-shrink: 0; display: block; }
+
+/* ---------- shell ---------- */
+.side { position: fixed; inset: 0 auto 0 0; width: var(--side); background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; z-index: 20; }
+.logo { height: var(--top); display: flex; align-items: center; gap: 10px; padding: 0 18px; border-bottom: 1px solid var(--line-soft); }
+.logo .mark { width: 26px; height: 26px; border-radius: 6px; background: var(--brand); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+.logo b { display: block; font-size: 14px; letter-spacing: .2px; }
+.logo small { display: block; font-size: 11px; color: var(--ink3); margin-top: -2px; }
+.snav { padding: 10px 10px; flex: 1; overflow: auto; }
+.snav .grp { font-size: 11px; color: var(--ink3); padding: 14px 10px 6px; }
+.snav a { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--r-sm); color: var(--ink2); text-decoration: none; font-size: 13.5px; }
+.snav a .ic { color: var(--ink3); }
+.snav a:hover { background: var(--sunken); }
+.snav a.on { background: var(--primary-weak); color: var(--primary); font-weight: 600; }
+.snav a.on .ic { color: var(--primary); }
+.snav a.dis { color: var(--ink3); cursor: default; }
+.snav a.dis:hover { background: none; }
+.snav a .ext { margin-left: auto; }
+.sfoot { padding: 14px 16px 16px; border-top: 1px solid var(--line-soft); }
+.sfoot .lab { font-size: 11px; color: var(--ink3); margin-bottom: 6px; }
+.sfoot p { font-size: 11.5px; color: var(--ink3); margin: 10px 0 0; line-height: 1.5; }
+.seg { display: flex; background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 2px; }
+.seg button { flex: 1; border: 0; background: none; padding: 5px 6px; border-radius: 4px; font-size: 12px; color: var(--ink2); white-space: nowrap; }
+.seg button.on { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(16,24,40,.1); }
+
+.body { margin-left: var(--side); min-height: 100vh; }
+.top { height: var(--top); background: var(--surface); border-bottom: 1px solid var(--line); display: flex; align-items: center; padding: 0 24px; gap: 12px; position: sticky; top: 0; z-index: 15; }
+.site { display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-sm); padding: 5px 10px; font-weight: 600; font-size: 13px; }
+.site .ic { color: var(--ink3); }
+.top .tr { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.tbtn { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 11px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-sm); font-size: 13px; color: var(--ink2); position: relative; }
+.tbtn:hover { border-color: #cfd4dc; color: var(--ink); }
+.tbtn.icon { width: 32px; padding: 0; justify-content: center; }
+.tbtn.on { border-color: var(--primary-line); background: var(--primary-weak); color: var(--primary); }
+.badge-dot { position: absolute; top: 6px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--crit); border: 1.5px solid #fff; }
+.user { display: flex; align-items: center; gap: 8px; margin-left: 6px; padding-left: 14px; border-left: 1px solid var(--line); font-size: 13px; color: var(--ink2); }
+.av { width: 26px; height: 26px; border-radius: 50%; background: #e6ebf5; color: var(--brand); display: grid; place-items: center; font-weight: 600; font-size: 12px; }
+
+main { padding: 0 28px 64px; max-width: 1440px; }
+.phead { padding: 20px 0 0; }
+.crumb { font-size: 12px; color: var(--ink3); }
+.crumb span { margin: 0 6px; color: #c3c8d0; }
+.ptitle { display: flex; align-items: baseline; gap: 14px; margin-top: 4px; }
+.ptitle h1 { font-size: 20px; font-weight: 600; margin: 0; letter-spacing: -.2px; }
+.ptitle p { margin: 0; color: var(--ink3); font-size: 13px; }
+.tabs { display: flex; align-items: center; gap: 22px; border-bottom: 1px solid var(--line); margin-top: 14px; }
+.tabs button { border: 0; background: none; padding: 10px 0 11px; font-size: 13.5px; color: var(--ink2); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button:hover { color: var(--ink); }
+.tabs button.on { color: var(--ink); font-weight: 600; border-bottom-color: var(--primary); }
+.tabs .tr { margin-left: auto; display: flex; gap: 8px; align-items: center; padding-bottom: 6px; }
+.pbody { padding-top: 18px; display: flex; flex-direction: column; gap: 16px; }
+
+/* ---------- controls ---------- */
+select, input[type=text], input[type=number], textarea { border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); padding: 6px 10px; font-size: 13px; }
+select { padding-right: 26px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b93a2' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 8px center; }
+select:disabled, input:disabled { background-color: var(--sunken); color: var(--ink3); }
+textarea { width: 100%; resize: vertical; line-height: 1.5; }
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-sm); font-size: 13px; color: var(--ink); white-space: nowrap; }
+.btn:hover { border-color: #c9ced6; background: var(--sunken); }
+.btn.sm { height: 28px; padding: 0 9px; font-size: 12.5px; }
+.btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+.btn.primary:hover { background: #1d47ad; }
+.btn.ghost { border-color: transparent; background: none; color: var(--ink2); }
+.btn.ghost:hover { background: var(--sunken); color: var(--ink); }
+.btn:disabled { opacity: .45; cursor: default; }
+.link { border: 0; background: none; color: var(--primary); padding: 0; font-size: 12.5px; display: inline-flex; align-items: center; gap: 4px; }
+.link:hover { text-decoration: underline; }
+
+/* ---------- surfaces ---------- */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+.card.pad { padding: 16px 18px; }
+.chead { display: flex; align-items: center; gap: 8px; padding: 14px 18px 0; }
+.chead h2 { font-size: 14px; font-weight: 600; margin: 0; }
+.chead .count { font-size: 12px; color: var(--ink3); font-weight: 500; }
+.chead .cmeta { margin-left: auto; font-size: 12px; color: var(--ink3); }
+.cbody { padding: 12px 18px 16px; }
+.aitag { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--primary-line); color: var(--primary); font-size: 10.5px; font-weight: 600; letter-spacing: .3px; }
+.ai-sec { border-left: 2px solid var(--primary-line); padding-left: 14px; }
+.muted { color: var(--ink3); }
+.small { font-size: 12px; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+
+/* summary bar */
+.sumbar { display: grid; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+.sumbar > div { padding: 14px 18px; border-left: 1px solid var(--line-soft); min-width: 0; }
+.sumbar > div:first-child { border-left: 0; }
+.sumbar label { display: block; font-size: 12px; color: var(--ink3); }
+.sumbar .n { display: block; font-size: 22px; font-weight: 600; letter-spacing: -.3px; margin-top: 2px; }
+.sumbar .n small { font-size: 12.5px; font-weight: 500; color: var(--ink3); margin-left: 3px; letter-spacing: 0; }
+.sumbar .d { display: block; font-size: 12px; color: var(--ink3); margin-top: 2px; }
+.up { color: var(--crit); } .down { color: var(--good); }
+.prog { height: 4px; background: var(--line-soft); border-radius: 2px; margin-top: 9px; overflow: hidden; }
+.prog i { display: block; height: 100%; background: var(--primary); border-radius: 2px; }
+
+/* status */
+.st { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; white-space: nowrap; }
+.st i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.st.crit { color: var(--crit); } .st.good { color: var(--good); } .st.warn { color: var(--warn); } .st.mute { color: var(--ink3); } .st.brand { color: var(--primary); }
+
+/* todo list */
+.ai-line { margin: 6px 18px 0; font-size: 13px; color: var(--ink2); }
+.todo { list-style: none; margin: 10px 0 0; padding: 0; border-top: 1px solid var(--line-soft); }
+.todo li { display: grid; grid-template-columns: 28px minmax(0, 1fr) 120px auto; gap: 14px; align-items: center; padding: 11px 18px; border-bottom: 1px solid var(--line-soft); }
+.todo li:last-child { border-bottom: 0; }
+.todo .no { width: 22px; height: 22px; border-radius: 50%; background: var(--sunken); border: 1px solid var(--line); display: grid; place-items: center; font-size: 11.5px; font-weight: 600; color: var(--ink2); }
+.todo .tx b { display: block; font-weight: 600; font-size: 13.5px; }
+.todo .tx span { display: block; font-size: 12.5px; color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.todo .tc { text-align: right; }
+.todo .tc b { display: block; font-size: 13.5px; font-weight: 600; }
+.todo .tc span { display: block; font-size: 12px; color: var(--ink3); }
+.todo .ta { display: flex; gap: 4px; }
+
+/* table */
+.tbl { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.tbl th { text-align: left; font-size: 12px; font-weight: 500; color: var(--ink3); padding: 8px 12px; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line); background: var(--sunken); white-space: nowrap; position: sticky; top: var(--top); z-index: 1; }
+.tbl th:first-child, .tbl td:first-child { padding-left: 18px; }
+.tbl th:last-child, .tbl td:last-child { padding-right: 18px; }
+.tbl td { padding: 9px 12px; border-bottom: 1px solid var(--line-soft); white-space: nowrap; font-size: 13px; vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: 0; }
+.tbl th.num, .tbl td.num { text-align: right; }
+.tbl tbody tr.row { cursor: pointer; }
+.tbl tbody tr.row:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.tbl tbody tr.row:hover td { background: #fafbfc; }
+.tbl tbody tr.sel td { background: var(--primary-weak) !important; }
+.tbl .nm b { font-weight: 600; }
+.tbl .nm span { display: block; font-size: 12px; color: var(--ink3); }
+.tbl .acts { display: flex; gap: 4px; justify-content: flex-end; opacity: .55; transition: opacity .12s; }
+.tbl tr:hover .acts, .tbl tr.sel .acts, .tbl .acts:focus-within { opacity: 1; }
+.bar { height: 4px; border-radius: 2px; background: var(--waste); min-width: 3px; }
+.flag { font-size: 11px; color: var(--warn); border: 1px solid #ecd6b3; background: #fdf7ec; border-radius: 4px; padding: 0 5px; margin-left: 6px; font-weight: 500; }
+.tfoot { border-top: 1px solid var(--line-soft); padding: 10px 18px; font-size: 12.5px; color: var(--ink2); }
+.tfoot summary { cursor: pointer; display: flex; align-items: center; gap: 8px; list-style: none; }
+.tfoot summary::-webkit-details-marker { display: none; }
+.tfoot summary .ic { color: var(--ink3); transition: transform .15s; }
+.tfoot[open] summary .ic { transform: rotate(90deg); }
+.xrow { display: grid; grid-template-columns: 170px 1fr auto; gap: 16px; align-items: start; padding: 10px 0 2px 22px; }
+.xrow b { font-weight: 600; } .xrow span { display: block; font-size: 12px; color: var(--ink3); }
+.empty { padding: 28px 18px; text-align: center; color: var(--ink3); font-size: 13px; }
+
+/* charts */
+.chart { width: 100%; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--ink2); margin-bottom: 6px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.legend i.ln { height: 2px; width: 14px; vertical-align: 3px; }
+.legend i.dash { height: 0; width: 14px; border-top: 1.5px dashed var(--ink2); background: none; vertical-align: 3px; border-radius: 0; }
+.tip { position: fixed; pointer-events: none; background: #161b26; color: #fff; font-size: 12px; padding: 7px 10px; border-radius: 6px; z-index: 60; display: none; line-height: 1.5; white-space: nowrap; box-shadow: var(--shadow-lg); }
+
+/* sheet (detail / chat) */
+.scrim { position: fixed; inset: 0; background: rgba(16,24,40,.18); z-index: 30; display: none; }
+.sheet { position: fixed; top: 0; right: 0; bottom: 0; width: 780px; max-width: calc(100vw - 80px); background: var(--surface); border-left: 1px solid var(--line); box-shadow: var(--shadow-lg); z-index: 31; display: none; flex-direction: column; }
+.sheet.chat { width: 420px; }
+.open-sheet .scrim, .open-sheet .sheet { display: flex; }
+.open-sheet .scrim { display: block; }
+.open-sheet .toast { right: 804px; }
+.open-sheet.chat-open .toast { right: 444px; }
+.sh-head { display: flex; align-items: flex-start; gap: 12px; padding: 16px 20px 14px; border-bottom: 1px solid var(--line); }
+.sh-head h2 { margin: 2px 0 0; font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.sh-nav { margin-left: auto; display: flex; align-items: center; gap: 2px; color: var(--ink3); font-size: 12px; }
+.sh-nav .btn { width: 30px; padding: 0; justify-content: center; }
+.sh-body { flex: 1; overflow: auto; padding: 16px 20px 24px; display: flex; flex-direction: column; gap: 18px; }
+.meta { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line-soft); border-radius: var(--r); }
+.meta > div { padding: 10px 14px; border-left: 1px solid var(--line-soft); }
+.meta > div:first-child { border-left: 0; }
+.meta label { display: block; font-size: 11.5px; color: var(--ink3); }
+.meta b { font-weight: 600; font-size: 13.5px; }
+.meta span { display: block; font-size: 11.5px; color: var(--ink3); }
+.actbar { display: flex; align-items: center; gap: 8px; }
+.actbar .hint { font-size: 12px; color: var(--ink3); margin-left: 4px; }
+.sec h3 { font-size: 13.5px; font-weight: 600; margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+.sec h3 .r { margin-left: auto; font-weight: 400; }
+.dl { display: grid; grid-template-columns: 210px 1fr; margin: 0; font-size: 13px; }
+.dl dt, .dl dd { margin: 0; padding: 7px 0; border-bottom: 1px dashed var(--line-soft); }
+.dl dt { color: var(--ink3); }
+.concl { margin-top: 10px; font-size: 13.5px; line-height: 1.6; }
+.concl b { font-weight: 600; }
+.hist { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }
+.hist li { display: grid; grid-template-columns: 52px 1fr; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
+.hist li:last-child { border-bottom: 0; }
+.hist .when { color: var(--ink3); font-variant-numeric: tabular-nums; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+/* chat */
+.chat-body { flex: 1; overflow: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+.msg { max-width: 90%; padding: 9px 12px; border-radius: 10px; line-height: 1.55; font-size: 13px; }
+.msg.me { align-self: flex-end; background: var(--primary); color: #fff; border-bottom-right-radius: 3px; }
+.msg.bot { align-self: flex-start; background: var(--sunken); border: 1px solid var(--line-soft); border-bottom-left-radius: 3px; }
+.msg .src { font-size: 11.5px; color: var(--ink3); margin-top: 6px; }
+.sugg { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 20px; border-top: 1px solid var(--line); }
+.chipbtn { border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 4px 10px; font-size: 12.5px; color: var(--ink2); }
+.chipbtn:hover { border-color: var(--primary-line); color: var(--primary); }
+.chipbtn.on { border-color: var(--primary); color: var(--primary); background: var(--primary-weak); font-weight: 600; }
+.sh-foot { padding: 10px 20px; border-top: 1px solid var(--line-soft); font-size: 11.5px; color: var(--ink3); }
+
+/* simulation */
+.simwrap { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 16px; align-items: start; }
+.simleft { position: sticky; top: calc(var(--top) + 16px); }
+.nl { display: flex; flex-direction: column; gap: 8px; }
+.nl input { width: 100%; padding: 9px 11px; font-size: 13.5px; }
+.plist { display: flex; flex-direction: column; margin-top: 6px; }
+.plist button { text-align: left; border: 0; background: none; padding: 9px 10px; border-radius: var(--r-sm); font-size: 13px; color: var(--ink2); display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; }
+.plist button:hover { background: var(--sunken); }
+.plist button .rb { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid #c3c9d2; margin-top: 2px; flex-shrink: 0; }
+.plist button.on { color: var(--ink); background: var(--primary-weak); }
+.plist button.on .rb { border: 4px solid var(--primary); }
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.fgrid label { display: block; font-size: 11.5px; color: var(--ink3); margin-bottom: 4px; }
+.fgrid select { width: 100%; }
+.fgrid .full { grid-column: 1 / -1; }
+.adv { border-top: 1px solid var(--line-soft); margin-top: 12px; padding-top: 10px; }
+.adv summary { cursor: pointer; font-size: 12.5px; color: var(--ink2); display: flex; align-items: center; gap: 6px; list-style: none; }
+.adv summary::-webkit-details-marker { display: none; }
+.adv summary .ic { color: var(--ink3); transition: transform .15s; }
+.adv[open] summary .ic { transform: rotate(90deg); }
+.chk { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink2); }
+.secline { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink3); margin-bottom: 8px; }
+
+/* overlay: toast, modal */
+.toast { position: fixed; right: 24px; top: calc(var(--top) + 12px); width: 360px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow-lg); padding: 12px 14px; z-index: 50; display: none; font-size: 13px; }
+.toast .tt { display: flex; gap: 10px; align-items: flex-start; }
+.toast .tt .ic { margin-top: 2px; }
+.toast .t1 { font-size: 11.5px; color: var(--ink3); }
+.toast .t2 { font-weight: 600; margin: 2px 0; }
+.toast .t3 { font-size: 12.5px; color: var(--ink2); line-height: 1.5; }
+.toast .acts { display: flex; gap: 6px; margin-top: 10px; padding-left: 26px; }
+.modal-bg { position: fixed; inset: 0; background: rgba(16,24,40,.32); display: none; align-items: center; justify-content: center; z-index: 55; }
+.modal { background: var(--surface); border-radius: 10px; width: 480px; box-shadow: var(--shadow-lg); }
+.modal.wide { width: 560px; }
+.m-head { padding: 18px 20px 0; }
+.m-head h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.m-head p { margin: 4px 0 0; font-size: 12.5px; color: var(--ink3); }
+.m-body { padding: 14px 20px 4px; }
+.m-body label { display: block; font-size: 12px; color: var(--ink2); margin: 12px 0 5px; }
+.m-body select, .m-body input { width: 100%; }
+.m-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 20px 18px; }
+.quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.parsed { display: flex; flex-direction: column; margin-top: 12px; border: 1px solid var(--line-soft); border-radius: var(--r); }
+.parsed .pc { display: grid; grid-template-columns: 70px 1fr; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.parsed .pc:last-child { border-bottom: 0; }
+.parsed .pc span { display: block; font-size: 12px; color: var(--ink3); }
 </style>
 </head>
 <body>
-<div class="topbar">
-  <a href="../" style="color:#9fb0cc;text-decoration:none;font-size:12.5px" title="기준정보 관리 데모로 돌아가기">← 기준정보</a>
-  <div class="brand">CEMS <small>울산 선진화공장</small></div>
-  <div class="nav" id="nav">
-    <button data-page="report" class="on">주간 낭비 리포트</button>
-    <button data-page="detail">설비 상세</button>
-    <button data-page="sim">조치 시뮬레이션</button>
-    <button data-page="effect">효과 판정</button>
+<aside class="side">
+  <div class="logo"><span class="mark">C</span><div><b>CEMS</b><small>HD현대일렉트릭</small></div></div>
+  <nav class="snav" id="snav"></nav>
+  <div class="sfoot">
+    <div class="lab">데모 · 보기 전환</div>
+    <div class="seg" id="role"><button data-role="energy" class="on">에너지팀</button><button data-role="owner">설비 담당자</button></div>
+    <p>가상 데이터로 만든 UX 데모입니다. AI 문장은 베드록 대신 템플릿으로 재현했고, 새로고침하면 처음 상태로 돌아갑니다.</p>
   </div>
-  <div class="topright">
-    <div class="seg" id="role">
-      <button data-role="energy" class="on">에너지팀</button>
-      <button data-role="owner">설비 담당자 (김도장)</button>
+</aside>
+<div class="body">
+  <header class="top">
+    <button class="site" title="사업장 선택 (데모)">울산 선진화공장 <span id="siteIc"></span></button>
+    <div class="tr">
+      <button class="tbtn" id="askBtn"></button>
+      <button class="tbtn icon" id="alertSim" title="실시간 알림 미리보기"></button>
+      <div class="user"><span class="av" id="av">최</span><span id="userName">최한성 · 에너지팀</span></div>
     </div>
-    <button class="iconbtn" id="alertSim" title="실시간 알림이 어떻게 오는지 보여줍니다">🔔 알림 미리보기</button>
-  </div>
+  </header>
+  <main id="main"></main>
 </div>
-<div class="demo-note">UX 확인용 데모입니다. 설비·수치·단가는 모두 가상 데이터이며, AI 문장은 베드록 대신 같은 형식의 템플릿으로 만들었습니다. 버튼을 눌러 조치·예외 등록을 해볼 수 있습니다 (새로고침하면 초기화).</div>
-<main id="main"></main>
-
-<button class="askbtn" id="askBtn">✦ AI에게 묻기</button>
-<div class="drawer" id="drawer">
-  <div class="dh"><b>✦ AI에게 묻기</b><span class="chip new">3단계 미리보기</span><button class="btn ghost" style="margin-left:auto" id="drawerClose">닫기</button></div>
-  <div class="dbody" id="chat"></div>
-  <div class="sugg" id="sugg"></div>
-  <div class="dfoot">실제 구현: 질문 → 베드록이 판정 API 호출 → 엔진 결과를 문장으로 설명. 숫자는 엔진 값만 씁니다.</div>
-</div>
-
-<div class="toast" id="toast"></div>
-<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div class="scrim" id="scrim"></div>
+<aside class="sheet" id="sheet" aria-label="상세"></aside>
+<div class="toast" id="toast" role="status"></div>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
 <div class="tip" id="tip"></div>
-
 <script>
+
 /* =========================================================
    1. 가상 데이터 생성 (설비·달력·15분 전력)
    ========================================================= */
@@ -381,94 +484,48 @@ const chip = s => `<span class="chip ${CHIP[s][0]}"><span class="dot"></span>${C
 function factoryIdleKw(w) { let sum = 0, n = 0; for (let d = w * 7; d < w * 7 + 7; d++) for (const s of IDLE[d]) { let t = 0; for (const e of EQUIP) t += e.p[d * SPD + s]; sum += t; n++; } return sum / n; }
 
 /* =========================================================
-   4. 공통 UI 도우미
+   4. 공통 UI
    ========================================================= */
 const $ = s => document.querySelector(s);
 const tip = $('#tip');
+const IC = {
+  bell: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+  chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  down: '<path d="m6 9 6 6 6-6"/>', right: '<path d="m9 6 6 6-6 6"/>', left: '<path d="m15 6-6 6 6 6"/>',
+  sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  zap: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>',
+  db: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>',
+  alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  ext: '<path d="M7 17 17 7M8 7h9v9"/>',
+};
+const ic = (n, s = 16) => `<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+const ST = { todo: ['미조치', 'crit'], new: ['신규', 'brand'], done: ['조치함', 'good'], exc: ['예외', 'mute'], check: ['확인 필요', 'warn'] };
+const stat = s => `<span class="st ${ST[s][1]}"><i></i>${ST[s][0]}</span>`;
 function bindTips(root) {
   root.querySelectorAll('[data-tip]').forEach(el => {
     el.addEventListener('mousemove', ev => { tip.innerHTML = el.dataset.tip; tip.style.display = 'block'; const x = Math.min(ev.clientX + 14, innerWidth - tip.offsetWidth - 10); tip.style.left = x + 'px'; tip.style.top = (ev.clientY + 14) + 'px'; });
     el.addEventListener('mouseleave', () => tip.style.display = 'none');
   });
 }
-function go(page, extra = {}) { Object.assign(STATE, extra, { page }); render(); window.scrollTo(0, 0); }
-function myFilterRows(rows) { return STATE.role === 'owner' ? rows.filter(r => r.e.owner === '김도장') : rows; }
-function myFilter(rows) { return STATE.role === 'owner' ? rows.filter(r => r.e.owner === '김도장') : rows; }
+const owner0 = () => STATE.role === 'owner';
+const ME = { energy: { name: '최한성', team: '에너지팀' }, owner: { name: '김도장', team: '도장부' } };
+function myFilterRows(rows) { return owner0() ? rows.filter(r => r.e.owner === '김도장') : rows; }
+const myFilter = myFilterRows;
+function go(page, extra = {}) { Object.assign(STATE, extra, { page }); closeSheet(false); render(); window.scrollTo(0, 0); }
+function STATUS_NOW(id) { return statusOf(id, STATE.week); }
+const delta = (a, b, unit, dec = 1) => { const d = a - b, p = b ? d / b * 100 : 0; if (Math.abs(d) < Math.pow(10, -dec) / 2) return '전주와 같음'; return `<span class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'} ${fmt(Math.abs(d), dec)}${unit} (${Math.abs(p).toFixed(0)}%)</span> 전주 대비`; };
 
 /* =========================================================
-   5. 화면 ① 주간 낭비 리포트
+   5. 주간 리포트
    ========================================================= */
-function aiSummary(w, rows) {
-  const tot = rows.reduce((a, r) => a + r.kwh, 0), cost = rows.reduce((a, r) => a + r.cost, 0);
-  const prevRows = weekRows(w - 1), ptot = prevRows.reduce((a, r) => a + r.kwh, 0);
-  const ch = ptot ? (tot - ptot) / ptot * 100 : 0;
-  const top = rows[0];
-  const news = rows.filter(r => statusOf(r.e.id, w) === 'new');
-  const byDept = {}; rows.forEach(r => byDept[r.e.dept] = (byDept[r.e.dept] || 0) + r.cost);
-  const td = Object.entries(byDept).sort((a, b) => b[1] - a[1])[0];
-  let txt = `지난주 비가동 시간 낭비는 <b>${fmt(tot / 1000, 1)}MWh(약 ${man(cost)}만 원)</b>로 전주보다 ${Math.abs(ch).toFixed(0)}% ${ch >= 0 ? '늘었습니다' : '줄었습니다'}. `;
-  txt += `가장 큰 항목은 <b>${top.e.zone} ${top.e.name}</b>(${won(top.cost)})${top.e.pat === 'alwaysOn' ? '로, 12주째 비가동 시간에도 계속 운전 중입니다' : ''}. `;
-  if (news.length) txt += `이번 주 새로 잡힌 설비는 ${news.map(r => r.e.name).join(', ')}입니다. `;
-  txt += `부서별로는 ${td[0]}가 전체 금액의 ${(td[1] / cost * 100).toFixed(0)}%를 차지합니다.`;
-  const basis = `낭비 합계 ${fmt(tot, 0)} kWh / ${Math.round(cost).toLocaleString()} 원\n전주 ${fmt(ptot, 0)} kWh (${ch >= 0 ? '+' : ''}${ch.toFixed(1)}%)\n1위 ${top.e.id} ${top.e.name}: ${fmt(top.kwh, 0)} kWh, ${Math.round(top.cost).toLocaleString()} 원\n신규 ${news.map(r => r.e.id).join(', ') || '없음'}`;
-  return { txt, basis };
-}
-
-function renderReport() {
-  const w = STATE.week, everyone = weekRows(w), rows = myFilter(everyone), all = STATE.role === 'owner' ? rows : everyone;
-  const tot = all.reduce((a, r) => a + r.kwh, 0), cost = all.reduce((a, r) => a + r.cost, 0);
-  const prev = myFilterRows(weekRows(w - 1)), ptot = prev.reduce((a, r) => a + r.kwh, 0), pcost = prev.reduce((a, r) => a + r.cost, 0);
-  const excNow = w === WEEKS - 1 ? Object.entries(STATE.status).filter(([k, v]) => v.s === 'exc' && v.at === today && (!owner0() || EQ[k].owner === '김도장')).length : 0;
-  const handled = all.filter(r => ['done', 'exc', 'check'].includes(STATUS_NOW(r.e.id))).length + excNow, totalResp = all.length + excNow;
-  const kw = factoryIdleKw(w), pkw = factoryIdleKw(w - 1);
-  const ai = aiSummary(w, everyone);
-  const owner = STATE.role === 'owner';
-  const myTodo = rows.filter(r => ['todo', 'new'].includes(statusOf(r.e.id, w)));
-  const delta = (a, b, unit, dec = 1) => { const d = a - b, p = b ? d / b * 100 : 0; return `<span class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲' : '▼'} ${fmt(Math.abs(d), dec)}${unit} (${Math.abs(p).toFixed(0)}%)</span> 전주 대비`; };
-
-  const weekOpts = Array.from({ length: 4 }, (_, i) => WEEKS - 1 - i).map(x => `<option value="${x}" ${x === w ? 'selected' : ''}>${weekLabel(x)}</option>`).join('');
-
-  return `
-  <div class="pagehead">
-    <div><h1>${owner ? '내 설비 · ' : ''}주간 비가동 낭비 리포트</h1><div class="sub">비가동 시간(평일 22–07시, 주말·공휴일)에 허용 부하를 넘어 운전된 설비 · 매주 월요일 07:00 발송</div></div>
-    <div class="right"><select id="weekSel">${weekOpts}</select></div>
-  </div>
-  ${owner ? `<div class="todo-banner"><b>처리할 항목 ${myTodo.length}건</b><span class="muted">껐으면 “차단 조치함”, 꺼지면 안 되는 이유가 있으면 “다른 사유”를 눌러 한 줄로 적어주세요.</span></div>` : ''}
-  <div class="grid kpis" style="grid-template-columns:repeat(3,1fr)">
-    <div class="card kpi"><div class="lab">${owner ? '내 설비 ' : ''}낭비 금액</div><div class="val">${man(cost)}<small>만 원</small></div><div class="delta">${delta(cost / 10000, pcost / 10000, '만 원')} · ${fmt(tot / 1000, 2)} MWh</div></div>
-    <div class="card kpi"><div class="lab">${owner ? '내 ' : ''}낭비 설비</div><div class="val">${all.length}<small>대</small></div><div class="delta">신규 ${all.filter(r => statusOf(r.e.id, w) === 'new').length}대 · 예외 ${Object.values(STATE.status).filter(x => x.s === 'exc').length}대 제외</div></div>
-    <div class="card kpi"><div class="lab">조치 응답률</div><div class="val">${totalResp ? Math.round(handled / totalResp * 100) : 0}<small>%</small></div><div class="delta">${handled} / ${totalResp}건 응답</div></div>
-  </div>
-  ${todoCard(rows, owner, tot, cost, ptot)}
-  <div class="grid ${owner ? '' : 'two'}">
-    <div class="card">
-      <h2>${owner ? '내 설비 낭비 목록' : '낭비 설비 목록'}</h2><div class="cap">금액 순 · 행을 누르면 설비 상세로 이동</div>
-      <table>
-        <thead><tr><th>설비</th>${owner ? '' : '<th>담당</th>'}<th class="num">낭비 시간</th><th class="num">낭비량</th><th class="num">금액</th><th class="bar-cell"></th><th>상태</th><th>조치</th></tr></thead>
-        <tbody>${rows.map(r => {
-          const st = STATUS_NOW(r.e.id), max = all[0].cost;
-          return `<tr class="row" data-eq="${r.e.id}">
-            <td><div class="eqname">${r.e.name} ${(CONF[r.e.id] || 0.8) < 0.85 ? `<span class="conf" title="AI 낭비 판정 신뢰도 ${Math.round((CONF[r.e.id] || 0.8) * 100)}%">확인 권장</span>` : ''}</div><div class="eqsub">${r.e.zone} · ${r.e.dept}</div></td>
-            ${owner ? '' : `<td>${r.e.owner}</td>`}
-            <td class="num">${fmt(r.hours, 1)}h</td>
-            <td class="num">${fmt(r.kwh, 0)} kWh</td>
-            <td class="num"><b>${won(r.cost)}</b></td>
-            <td class="bar-cell"><div class="minibar" style="width:${Math.max(4, r.cost / max * 100)}%"></div></td>
-            <td>${chip(st)}</td>
-            <td><div class="acts">${['todo', 'new'].includes(st) ? `<button class="btn" data-act="done" data-id="${r.e.id}">차단 조치함</button><button class="btn ghost" data-act="free" data-id="${r.e.id}">다른 사유</button>` : `<button class="btn ghost" data-act="undo" data-id="${r.e.id}">되돌리기</button>`}</div></td>
-          </tr>`; }).join('') || `<tr><td colspan="8" class="muted" style="padding:24px 8px">이번 주 낭비로 잡힌 설비가 없습니다.</td></tr>`}</tbody>
-      </table>
-      ${exclBlock(w)}
-    </div>
-    ${owner ? '' : `<div class="grid">
-      <div class="card"><h2>부서별 낭비 금액</h2><div class="cap">공장 전체 · ${weekLabel(w)}</div>${deptChart(everyone)}</div>
-      <div class="card"><h2>주별 비가동 낭비량</h2><div class="cap">최근 12주 · MWh</div>${trendChart(w)}</div>
-    </div>`}
-  </div>`;
-}
-function owner0() { return STATE.role === 'owner'; }
-function STATUS_NOW(id) { return statusOf(id, STATE.week); }
-
 // LLM: 이번 주 할 일 3가지 (금액 × 실행 난이도 × 묶음 효과로 고름)
 function todoItems(rows) {
   const open = rows.filter(r => ['todo', 'new'].includes(STATUS_NOW(r.e.id)));
@@ -486,56 +543,98 @@ function todoItems(rows) {
   });
   return items.sort((a, b) => b.score - a.score).slice(0, 3);
 }
-function todoCard(rows, owner, tot, cost, ptot) {
+
+function renderReport() {
+  const w = STATE.week, owner = owner0(), everyone = weekRows(w), rows = myFilter(everyone), all = rows;
+  const tot = all.reduce((a, r) => a + r.kwh, 0), cost = all.reduce((a, r) => a + r.cost, 0);
+  const prev = myFilterRows(weekRows(w - 1)), ptot = prev.reduce((a, r) => a + r.kwh, 0), pcost = prev.reduce((a, r) => a + r.cost, 0);
+  const excNow = w === WEEKS - 1 ? Object.entries(STATE.status).filter(([k, v]) => v.s === 'exc' && v.at === today && (!owner || EQ[k].owner === '김도장')).length : 0;
+  const handled = all.filter(r => ['done', 'exc', 'check'].includes(STATUS_NOW(r.e.id))).length + excNow, totalResp = all.length + excNow;
+  const news = all.filter(r => statusOf(r.e.id, w) === 'new').length, excAll = Object.entries(STATE.status).filter(([k, x]) => x.s === 'exc' && (!owner || EQ[k].owner === '김도장')).length;
+  const max = rows.length ? rows[0].cost : 1;
+  return `
+  <section class="sumbar" style="grid-template-columns: 1.3fr 1fr 1fr 1.2fr">
+    <div><label>${owner ? '내 설비 ' : ''}낭비 금액</label><b class="n">${man(cost)}<small>만 원</small></b><span class="d">${delta(cost / 1e4, pcost / 1e4, '만 원')}</span></div>
+    <div><label>낭비량</label><b class="n">${fmt(tot / 1000, 2)}<small>MWh</small></b><span class="d">전주 ${fmt(ptot / 1000, 2)} MWh</span></div>
+    <div><label>낭비 설비</label><b class="n">${all.length}<small>대</small></b><span class="d">신규 ${news} · 예외 ${excAll}대 제외</span></div>
+    <div><label>조치 응답</label><b class="n">${handled}<small>/ ${totalResp}건</small></b><div class="prog"><i style="width:${totalResp ? handled / totalResp * 100 : 0}%"></i></div></div>
+  </section>
+  ${todoSection(rows, owner, tot, cost, ptot)}
+  <div class="${owner ? 'stack' : 'grid2'}">
+    <section class="card">
+      <div class="chead"><h2>${owner ? '내 설비' : '낭비 설비'}</h2><span class="count">${rows.length}</span><span class="cmeta">금액 순 · 행을 누르면 상세가 열립니다</span></div>
+      <table class="tbl">
+        <thead><tr><th>설비</th>${owner ? '' : '<th>담당</th>'}<th class="num">낭비 시간</th><th class="num">낭비량</th><th class="num">금액</th><th style="width:70px"></th><th>상태</th><th class="num">조치</th></tr></thead>
+        <tbody>${rows.map(r => {
+          const st = STATUS_NOW(r.e.id), cf = CONF[r.e.id] || 0.8, sel = STATE.sheet?.type === 'eq' && STATE.sheet.id === r.e.id;
+          return `<tr class="row${sel ? ' sel' : ''}" data-open="${r.e.id}">
+            <td class="nm"><b>${r.e.name}</b>${cf < 0.85 ? `<span class="flag" style="display:inline" title="AI 낭비 판정 신뢰도 ${Math.round(cf * 100)}%">확인 권장</span>` : ''}<span>${r.e.zone} · ${r.e.dept}</span></td>
+            ${owner ? '' : `<td>${r.e.owner}</td>`}
+            <td class="num">${fmt(r.hours, 1)} h</td>
+            <td class="num">${fmt(r.kwh, 0)} kWh</td>
+            <td class="num"><b style="font-weight:600">${won(r.cost)}</b></td>
+            <td><div class="bar" style="width:${Math.max(4, r.cost / max * 100)}%"></div></td>
+            <td>${stat(st)}</td>
+            <td><div class="acts">${['todo', 'new'].includes(st) ? `<button class="btn sm" data-act="done" data-id="${r.e.id}">${ic('check', 14)}조치함</button><button class="btn sm ghost" data-act="free" data-id="${r.e.id}">다른 사유</button>` : `<button class="btn sm ghost" data-act="undo" data-id="${r.e.id}">되돌리기</button>`}</div></td>
+          </tr>`; }).join('') || `<tr><td colspan="8" class="empty">이번 주 낭비로 잡힌 설비가 없습니다.</td></tr>`}</tbody>
+      </table>
+      ${exclBlock(w)}
+    </section>
+    ${owner ? '' : `<div class="stack">
+      <section class="card"><div class="chead"><h2>부서별 낭비 금액</h2></div><div class="cbody">${deptChart(everyone)}</div></section>
+      <section class="card"><div class="chead"><h2>주별 낭비량</h2><span class="cmeta">최근 12주 · MWh</span></div><div class="cbody">${trendChart(w)}</div></section>
+    </div>`}
+  </div>`;
+}
+function todoSection(rows, owner, tot, cost, ptot) {
   const its = todoItems(rows);
   const ch = ptot ? (tot - ptot) / ptot * 100 : 0;
-  const head = `지난주 ${owner ? '내 설비의 ' : ''}비가동 낭비는 <b>${fmt(tot / 1000, 1)}MWh(약 ${man(cost)}만 원)</b>로 전주보다 ${Math.abs(ch).toFixed(0)}% ${ch >= 0 ? '늘었습니다' : '줄었습니다'}.`;
-  if (!its.length) return `<div class="ai"><span class="badge">✦ AI 요약</span><p>${head} 이번 주 처리할 일은 모두 끝났습니다.</p></div>`;
+  const head = `지난주 ${owner ? '내 설비의 ' : ''}낭비는 ${fmt(tot / 1000, 1)} MWh(약 ${man(cost)}만 원)로 전주보다 ${Math.abs(ch).toFixed(0)}% ${ch >= 0 ? '늘었습니다' : '줄었습니다'}.`;
+  if (!its.length) return `<section class="card"><div class="chead"><h2>이번 주 할 일</h2><span class="aitag">AI</span></div><p class="ai-line" style="padding-bottom:16px">${head} 처리할 일은 모두 끝났습니다.</p></section>`;
   const sum = its.reduce((a, x) => a + x.cost, 0);
-  return `<div class="ai"><span class="badge">✦ AI · 이번 주 할 일 ${its.length}가지</span>
-    <p>${head} 아래 ${its.length}가지만 처리하면 주 <b>${man(sum)}만 원</b>(연 약 ${fmt(sum * 52 / 1e8, 2)}억 원)이 줄어듭니다.</p>
-    <div class="small muted" style="margin-top:4px">금액, 조치 난이도, 한 번에 묶어 처리할 수 있는지를 보고 골랐습니다.</div>
-    <div class="todo3">${its.map((x, i) => `<div class="it"><div class="no">${i + 1}</div><div class="tt">${x.t}</div><div class="why">${x.why}</div><div class="how">→ ${x.how}</div>
-      <div class="meta"><b>주 ${won(x.cost)}</b><span>담당 ${x.owner}</span><span style="margin-left:auto;display:flex;gap:6px">${x.sim ? `<button class="btn" data-sim="${x.sim}">시뮬레이션</button>` : ''}<button class="btn ghost" data-goeq="${x.eq}">상세</button></span></div></div>`).join('')}</div></div>`;
+  return `<section class="card">
+    <div class="chead"><h2>이번 주 할 일</h2><span class="aitag">AI 추천</span><span class="cmeta">${its.length}가지 처리 시 주 ${man(sum)}만 원 · 연 약 ${manR(sum * 52)}만 원 절감</span></div>
+    <p class="ai-line">${head} 금액, 조치 난이도, 한 번에 묶어 처리할 수 있는지를 보고 골랐습니다.</p>
+    <ol class="todo">${its.map((x, i) => `<li>
+      <span class="no">${i + 1}</span>
+      <div class="tx"><b>${x.t}</b><span title="${x.why}">${x.why} → ${x.how}</span></div>
+      <div class="tc"><b>주 ${won(x.cost)}</b><span>${x.owner}</span></div>
+      <div class="ta">${x.sim ? `<button class="btn sm" data-sim="${x.sim}">${ic('sliders', 14)}시뮬레이션</button>` : ''}<button class="btn sm ghost" data-open="${x.eq}">열기 ${ic('right', 14)}</button></div>
+    </li>`).join('')}</ol>
+  </section>`;
 }
 function exclBlock(w) {
   const ex = myFilterRows(excludedRows(w));
   if (!ex.length) return '';
-  return `<details class="excl"><summary>✦ AI가 정상 운전으로 판단해 제외한 후보 ${ex.length}건 (엔진은 허용 초과로 탐지)</summary>${ex.map(r => `<div class="xrow"><div style="min-width:170px"><div class="eqname">${r.e.name}</div><div class="eqsub">${r.e.zone} · ${fmt(r.kwh, 0)} kWh</div></div><div style="flex:1;line-height:1.55">${r.j.reason} <span class="conf">정상 ${Math.round(r.j.conf * 100)}%</span></div><button class="btn" data-incl="${r.e.id}-${w}">낭비로 포함</button></div>`).join('')}</details>`;
+  return `<details class="tfoot"><summary>${ic('right', 14)}<span class="aitag">AI</span> 정상 운전으로 판단해 목록에서 제외한 후보 ${ex.length}건 <span class="muted">· 엔진은 허용 초과로 탐지</span></summary>${ex.map(r => `<div class="xrow"><div><b>${r.e.name}</b><span>${r.e.zone} · ${fmt(r.kwh, 0)} kWh · 정상 판단 ${Math.round(r.j.conf * 100)}%</span></div><div style="line-height:1.55">${r.j.reason}</div><button class="btn sm" data-incl="${r.e.id}-${w}">낭비로 포함</button></div>`).join('')}</details>`;
 }
-
 function deptChart(rows) {
   const by = {}; rows.forEach(r => by[r.e.dept] = (by[r.e.dept] || 0) + r.cost);
   const items = Object.entries(by).sort((a, b) => b[1] - a[1]);
-  if (!items.length) return '<div class="muted small">데이터 없음</div>';
-  const W = 400, rowH = 34, H = items.length * rowH + 6, x0 = 78, max = items[0][1];
+  if (!items.length) return '<div class="empty">데이터 없음</div>';
+  const W = 300, rowH = 30, H = items.length * rowH, x0 = 72, max = items[0][1], total = rows.reduce((a, r) => a + r.cost, 0);
   return `<svg class="chart" viewBox="0 0 ${W} ${H}">${items.map(([k, v], i) => {
-    const y = i * rowH + 6, bw = (W - x0 - 70) * v / max;
-    return `<g data-tip="${k}<br><b>${won(v)}</b> · 전체의 ${(v / rows.reduce((a, r) => a + r.cost, 0) * 100).toFixed(0)}%">
-      <rect x="0" y="${y - 3}" width="${W}" height="${rowH - 2}" fill="transparent"/>
-      <text x="0" y="${y + 15}" font-size="12.5" fill="var(--ink)">${k}</text>
-      <rect x="${x0}" y="${y + 3}" width="${Math.max(3, bw)}" height="18" rx="4" fill="var(--waste)"/>
-      <text x="${x0 + bw + 8}" y="${y + 16}" font-size="12" fill="var(--ink2)">${man(v)}만 원</text></g>`;
+    const y = i * rowH, bw = (W - x0 - 64) * v / max;
+    return `<g data-tip="${k}<br><b>${won(v)}</b> · 전체의 ${(v / total * 100).toFixed(0)}%"><rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"/>
+      <text x="0" y="${y + 19}" font-size="12" fill="var(--ink2)">${k}</text>
+      <rect x="${x0}" y="${y + 10}" width="${Math.max(3, bw)}" height="10" rx="2" fill="var(--waste)"/>
+      <text x="${x0 + bw + 8}" y="${y + 19}" font-size="11.5" fill="var(--ink2)" style="font-variant-numeric:tabular-nums">${man(v)}만</text></g>`;
   }).join('')}</svg>`;
 }
 function trendChart(cur) {
-  const vals = Array.from({ length: WEEKS }, (_, w) => weekRows(w).reduce((a, r) => a + r.kwh, 0) / 1000);
-  const W = 400, H = 170, x0 = 30, y0 = 10, ph = 128, max = Math.ceil(Math.max(...vals) * 1.15);
-  const bw = (W - x0) / WEEKS;
-  const ticks = [0, max / 2, max];
+  const vals = Array.from({ length: WEEKS }, (_, w) => myFilterRows(weekRows(w)).reduce((a, r) => a + r.kwh, 0) / 1000);
+  const W = 300, H = 150, x0 = 26, y0 = 6, ph = 112, max = Math.max(1, Math.ceil(Math.max(...vals) * 1.15)), bw = (W - x0) / WEEKS;
   return `<svg class="chart" viewBox="0 0 ${W} ${H}">
-    ${ticks.map(t => `<line x1="${x0}" x2="${W}" y1="${y0 + ph - t / max * ph}" y2="${y0 + ph - t / max * ph}" stroke="var(--line2)"/><text x="${x0 - 6}" y="${y0 + ph - t / max * ph + 4}" font-size="11" text-anchor="end" fill="var(--ink3)">${fmt(t, 1)}</text>`).join('')}
-    ${vals.map((v, w) => { const h = v / max * ph, x = x0 + w * bw + 4;
-      return `<g data-tip="${weekLabel(w)}<br><b>${fmt(v, 2)} MWh</b>">
-        <rect x="${x0 + w * bw}" y="${y0}" width="${bw}" height="${ph}" fill="transparent"/>
-        <rect x="${x}" y="${y0 + ph - h}" width="${bw - 8}" height="${Math.max(1, h)}" rx="3" fill="var(--waste)" opacity="${w === cur ? 1 : 0.38}"/>
-        ${w % 2 === 1 || w === cur ? `<text x="${x + (bw - 8) / 2}" y="${H - 14}" font-size="10.5" text-anchor="middle" fill="${w === cur ? 'var(--ink)' : 'var(--ink3)'}" font-weight="${w === cur ? 600 : 400}">${md(dayDate(w * 7))}</text>` : ''}</g>`; }).join('')}
-    <line x1="${x0}" x2="${W}" y1="${y0 + ph}" y2="${y0 + ph}" stroke="var(--ink3)"/>
-  </svg>`;
+    ${[0, max / 2, max].map(t => `<line x1="${x0}" x2="${W}" y1="${y0 + ph - t / max * ph}" y2="${y0 + ph - t / max * ph}" stroke="var(--line-soft)"/><text x="${x0 - 6}" y="${y0 + ph - t / max * ph + 4}" font-size="10.5" text-anchor="end" fill="var(--ink3)">${fmt(t, 0)}</text>`).join('')}
+    ${vals.map((v, w) => { const h = v / max * ph, x = x0 + w * bw + bw * 0.22, bwi = bw * 0.56;
+      return `<g data-tip="${weekLabel(w)}<br><b>${fmt(v, 2)} MWh</b>"><rect x="${x0 + w * bw}" y="${y0}" width="${bw}" height="${ph}" fill="transparent"/>
+        <rect x="${x}" y="${y0 + ph - h}" width="${bwi}" height="${Math.max(1, h)}" rx="2" fill="var(--waste)" opacity="${w === cur ? 1 : 0.32}"/>
+        ${w % 3 === 2 || w === cur ? `<text x="${x + bwi / 2}" y="${H - 14}" font-size="10.5" text-anchor="middle" fill="${w === cur ? 'var(--ink)' : 'var(--ink3)'}" font-weight="${w === cur ? 600 : 400}">${md(dayDate(w * 7))}</text>` : ''}</g>`; }).join('')}
+    <line x1="${x0}" x2="${W}" y1="${y0 + ph}" y2="${y0 + ph}" stroke="#c9ced6"/></svg>`;
 }
 
 /* =========================================================
-   6. 화면 ② 설비 상세
+   6. 설비 상세 (오른쪽 패널)
    ========================================================= */
 function reasonText(e, w) {
   const r = WASTE[WI[e.id]][w];
@@ -584,89 +683,79 @@ function investigate(e, w) {
   }
   return { S, concl, verdict };
 }
-function investBox(e, w) {
-  const v = investigate(e, w);
-  return `<div class="ai"><span class="badge">✦ AI 조사</span> <span class="conf">판정: ${v.verdict}${v.verdict !== '정상' ? ` · 신뢰도 ${Math.round((CONF[e.id] || 0.8) * 100)}%` : ''}</span>
-    <ul class="steps">${v.S.map(([q, a]) => `<li><span class="ck">✓</span><span class="q">${q}</span><span>${a}</span></li>`).join('')}</ul>
-    <div class="concl"><b>결론</b> · ${v.concl}</div>
-    <div class="foot"><span>AI가 판정 API·이력·문서를 직접 조회해 원인을 좁혔습니다. kWh·금액은 엔진 값입니다.</span>${['E01', 'E02', 'E03', 'E05', 'E04', 'E07'].includes(e.id) ? `<button class="btn" data-sim="${{ E01: 'p1', E02: 'p1', E03: 'p1', E05: 'p2', E04: 'p3', E07: 'p5' }[e.id]}" style="margin-left:auto">이 조치 시뮬레이션 →</button>` : ''}</div></div>`;
-}
-function renderDetail() {
-  const e = EQ[STATE.eq], w = STATE.week, r = WASTE[WI[e.id]][w];
-  const st = STATUS_NOW(e.id);
-  const options = EQUIP.map(x => `<option value="${x.id}" ${x.id === e.id ? 'selected' : ''}>${x.zone} · ${x.name}</option>`).join('');
-  const hist = (STATE.log[e.id] || []).slice().reverse();
-  const wk = WASTE[WI[e.id]].map(x => x.kwh);
-  return `
-  <div class="pagehead">
-    <div><h1>설비 상세</h1><div class="sub">${weekLabel(w)} · 비가동 구간(회색)과 허용 부하선 기준 판정</div></div>
-    <div class="right"><select id="eqSel">${options}</select></div>
-  </div>
-  <div class="card" style="margin-bottom:14px">
-    <div class="eqhead">
-      <div style="flex:1">
-        <div style="display:flex;gap:10px;align-items:center"><span style="font-size:19px;font-weight:700">${e.name}</span>${r.kwh <= 1 && !STATE.status[e.id] ? '<span class="chip done">이번 주 정상</span>' : chip(st)}</div>
-        <div class="meta">
-          <div><span>위치</span>${e.zone}</div><div><span>부서 · 담당</span>${e.dept} · ${e.owner}</div>
-          <div><span>허용 비가동 부하</span><b>${fmt(e.allowed, 1)} kW</b> <span style="display:inline" class="small">(자동 제안 ${fmt(e.suggested, 1)} kW${e.confirmNote ? ' → 에너지팀 확정' : ''})</span></div>
-          <div><span>지난주 낭비</span><b>${fmt(r.kwh, 0)} kWh · ${won(r.cost)}</b></div>
-        </div>
-        ${e.confirmNote ? `<div class="small muted" style="margin-top:8px">확정 사유: ${e.confirmNote}</div>` : ''}
-      </div>
-      <div class="actbox">
-        ${st === 'exc' ? `<div class="small muted">예외 등록됨: ${STATE.status[e.id].note}</div><button class="btn" data-act="undo" data-id="${e.id}">예외 해제</button>` :
-          ['todo', 'new'].includes(st) && r.kwh > 1 ? `<button class="btn primary" data-act="done" data-id="${e.id}">✓ 차단 조치함</button><button class="btn" data-act="free" data-id="${e.id}">다른 사유 (예외·현장 확인)</button><div class="small muted" style="line-height:1.5">꺼지면 안 되는 이유나 확인이 필요한 사정을 한 줄로 적으면 AI가 예외·확인 요청으로 정리합니다.</div>` :
-          st === 'done' || st === 'check' ? `<div class="small muted">${CHIP[st][1]} · ${STATE.status[e.id]?.at || ''}</div><button class="btn ghost" data-act="undo" data-id="${e.id}">되돌리기</button>` : `<div class="small muted">처리할 항목이 없습니다.</div>`}
-      </div>
+
+function sheetEq(id) {
+  const e = EQ[id], w = STATE.week, r = WASTE[WI[e.id]][w], st = STATUS_NOW(e.id);
+  const list = myFilter(weekRows(w)).map(x => x.e.id), pos = list.indexOf(id);
+  const v = investigate(e, w), hist = (STATE.log[e.id] || []).slice().reverse();
+  const normal = r.kwh <= 1 && !STATE.status[e.id];
+  const simMap = { E01: 'p1', E02: 'p1', E03: 'p1', E05: 'p2', E04: 'p3', E07: 'p5' };
+  let actions;
+  if (st === 'exc') actions = `<span class="hint">예외 등록됨 · ${STATE.status[e.id].note}</span><button class="btn sm" data-act="undo" data-id="${e.id}">예외 해제</button>`;
+  else if (['todo', 'new'].includes(st) && r.kwh > 1) actions = `<button class="btn primary" data-act="done" data-id="${e.id}">${ic('check', 15)}차단 조치함</button><button class="btn" data-act="free" data-id="${e.id}">다른 사유</button><span class="hint">꺼지면 안 되는 이유나 현장 확인이 필요하면 '다른 사유'</span>`;
+  else if (st === 'done' || st === 'check') actions = `<span class="hint">${ST[st][0]} · ${STATE.status[e.id]?.at || ''}</span><button class="btn sm ghost" data-act="undo" data-id="${e.id}">되돌리기</button>`;
+  else actions = `<span class="hint">처리할 항목이 없습니다.</span>`;
+  if (simMap[e.id] && r.kwh > 1) actions += `<button class="btn ghost" style="margin-left:auto" data-sim="${simMap[e.id]}">${ic('sliders', 14)}조치 시뮬레이션</button>`;
+  return `<div class="sh-head">
+      <div><div class="crumb">${e.zone} · ${e.dept} · ${e.type}</div><h2>${e.name} ${normal ? stat('done').replace('조치함', '이번 주 정상') : stat(st)}</h2></div>
+      <div class="sh-nav">${pos >= 0 ? `<button class="btn ghost" data-nav="-1" ${pos <= 0 ? 'disabled' : ''} aria-label="이전 설비">${ic('left')}</button><span>${pos + 1} / ${list.length}</span><button class="btn ghost" data-nav="1" ${pos >= list.length - 1 ? 'disabled' : ''} aria-label="다음 설비">${ic('right')}</button>` : ''}<button class="btn ghost" data-close aria-label="닫기">${ic('x')}</button></div>
     </div>
-  </div>
-  <div class="card" style="margin-bottom:14px">
-    <h2>지난주 15분 전력</h2>
-    <div class="legend"><span><i class="ln" style="background:var(--accent)"></i>전력 (kW)</span><span><i style="background:#e9ebef"></i>비가동 구간</span><span><i class="dash"></i>허용 부하</span><span><i style="background:var(--waste);opacity:.55"></i>낭비 (허용 초과분)</span></div>
-    ${loadChart(e, w)}
-  </div>
-  ${investBox(e, w)}
-  <div class="grid two">
-    <div class="card"><h2>주별 낭비량</h2><div class="cap">최근 12주 · kWh</div>${eqTrend(wk, e)}</div>
-    <div class="card"><h2>조치 이력</h2><div class="cap">조치·예외·확인 기록</div><ul class="hist">${hist.map(h => `<li><span class="when">${h.at}</span><span>${h.t}</span></li>`).join('') || '<li class="muted">기록 없음</li>'}</ul></div>
-  </div>`;
+    <div class="sh-body">
+      <div class="meta">
+        <div><label>담당</label><b>${e.owner}</b></div>
+        <div><label>허용 비가동 부하</label><b class="n">${fmt(e.allowed, 1)} kW</b><span>${e.confirmNote ? `제안 ${fmt(e.suggested, 1)} → 에너지팀 확정` : `자동 제안 ${fmt(e.suggested, 1)} kW`}</span></div>
+        <div><label>지난주 낭비</label><b class="n">${won(r.cost)}</b><span>${fmt(r.kwh, 0)} kWh</span></div>
+        <div><label>낭비 시간</label><b class="n">${fmt(r.hours, 1)} h</b><span>${r.runs.length}개 구간</span></div>
+      </div>
+      <div class="actbar">${actions}</div>
+      <div class="sec">
+        <h3>지난주 15분 전력 <span class="r small muted">${weekLabel(w)}</span></h3>
+        <div class="legend"><span><i class="ln" style="background:var(--series)"></i>전력</span><span><i style="background:#eceef2"></i>비가동 시간</span><span><i class="dash"></i>허용 부하</span><span><i style="background:var(--waste);opacity:.6"></i>낭비 (허용 초과분)</span></div>
+        ${loadChart(e, w)}
+      </div>
+      <div class="sec ai-sec">
+        <h3>판정 근거 <span class="aitag">AI 조사</span><span class="r small muted">판정 ${v.verdict}${v.verdict !== '정상' ? ` · 신뢰도 ${Math.round((CONF[e.id] || 0.8) * 100)}%` : ''}</span></h3>
+        <dl class="dl">${v.S.map(([q, a]) => `<dt>${q}</dt><dd>${a}</dd>`).join('')}</dl>
+        <div class="concl"><b>결론</b> · ${v.concl}</div>
+        ${e.confirmNote ? `<div class="small muted" style="margin-top:6px">허용 부하 확정 사유: ${e.confirmNote}</div>` : ''}
+      </div>
+      <div class="two">
+        <div class="sec"><h3>주별 낭비량 <span class="r small muted">kWh</span></h3>${eqTrend(WASTE[WI[e.id]].map(x => x.kwh), e)}</div>
+        <div class="sec"><h3>조치 이력</h3><ul class="hist">${hist.map(h => `<li><span class="when">${h.at}</span><span>${h.t}</span></li>`).join('') || '<li><span></span><span class="muted">기록 없음</span></li>'}</ul></div>
+      </div>
+    </div>`;
 }
 function loadChart(e, w) {
-  const W = 1240, H = 272, x0 = 44, y0 = 24, ph = 200, pw = W - x0 - 10, n = 7 * SPD;
+  const W = 740, H = 222, x0 = 34, y0 = 26, ph = 160, pw = W - x0 - 6, n = 7 * SPD;
   let max = 0; for (let i = 0; i < n; i++) max = Math.max(max, e.p[w * 7 * SPD + i]);
   max = Math.ceil(Math.max(max, e.allowed * 1.5, 1) * 1.1 / 5) * 5;
-  const X = i => x0 + i / n * pw, Y = v => y0 + ph - v / max * ph;
-  let shade = '', waste = '', line = '';
-  for (let d = 0; d < 7; d++) {
-    const dd = w * 7 + d; let s = 0;
-    while (s < SPD) { if (!isWork(dd, s)) { let t = s; while (t < SPD && !isWork(dd, t)) t++; shade += `<rect x="${X(d * SPD + s)}" y="${y0}" width="${X(d * SPD + t) - X(d * SPD + s)}" height="${ph}" fill="#eef0f3"/>`; s = t; } else s++; }
-  }
-  const r = WASTE[WI[e.id]][w];
-  r.runs.forEach(x => { const base = (x.d - w * 7) * SPD; let pts = `${X(base + x.from)},${Y(e.allowed)} `; for (let k = x.from; k < x.to; k++) { pts += `${X(base + k)},${Y(e.p[x.d * SPD + k])} ${X(base + k + 1)},${Y(e.p[x.d * SPD + k])} `; } pts += `${X(base + x.to)},${Y(e.allowed)}`; waste += `<polygon points="${pts}" fill="var(--waste)" opacity=".55"/>`; });
+  const X = i => x0 + i / n * pw, Y = v => y0 + ph - v / max * ph, thr = e.allowed + Math.max(0.5, e.allowed * .1);
+  let shade = '', waste = '';
+  for (let d = 0; d < 7; d++) { const dd = w * 7 + d; let s = 0; while (s < SPD) { if (!isWork(dd, s)) { let t = s; while (t < SPD && !isWork(dd, t)) t++; shade += `<rect x="${X(d * SPD + s)}" y="${y0}" width="${X(d * SPD + t) - X(d * SPD + s)}" height="${ph}" fill="#f1f2f5"/>`; s = t; } else s++; } }
+  WASTE[WI[e.id]][w].runs.forEach(x => { const base = (x.d - w * 7) * SPD; let pts = `${X(base + x.from)},${Y(e.allowed)} `; for (let k = x.from; k < x.to; k++) pts += `${X(base + k)},${Y(e.p[x.d * SPD + k])} ${X(base + k + 1)},${Y(e.p[x.d * SPD + k])} `; pts += `${X(base + x.to)},${Y(e.allowed)}`; waste += `<polygon points="${pts}" fill="var(--waste)" opacity=".5"/>`; });
   let path = ''; for (let i = 0; i < n; i++) path += `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(e.p[w * 7 * SPD + i]).toFixed(1)}`;
-  const ticks = [0, max / 2, max];
-  const days = Array.from({ length: 7 }, (_, d) => { const dt = dayDate(w * 7 + d); return `<line x1="${X(d * SPD)}" x2="${X(d * SPD)}" y1="${y0}" y2="${y0 + ph}" stroke="#d9dde3"/><text x="${X(d * SPD + 48)}" y="${H - 22}" font-size="12" text-anchor="middle" fill="var(--ink2)">${md(dt)}(${DOW[dt.getDay()]})${HOLIDAYS.has(iso(dt)) ? ' 휴일' : ''}</text>`; }).join('');
-  const hover = Array.from({ length: 7 * 24 }, (_, h) => { const i = h * 4, v = e.p[w * 7 * SPD + i], dt = dayDate(w * 7 + Math.floor(h / 24)); const idle = !isWork(w * 7 + Math.floor(h / 24), (h % 24) * 4);
-    return `<rect x="${X(i)}" y="${y0}" width="${X(i + 4) - X(i)}" height="${ph}" fill="transparent" data-tip="${md(dt)}(${DOW[dt.getDay()]}) ${String(h % 24).padStart(2, '0')}:00<br><b>${fmt(v, 1)} kW</b> · ${idle ? (v > e.allowed + Math.max(0.5, e.allowed * .1) ? '<span style=\'color:#f6b36a\'>비가동 · 허용 초과</span>' : '비가동 · 정상') : '가동'}"/>`; }).join('');
+  const days = Array.from({ length: 7 }, (_, d) => { const dt = dayDate(w * 7 + d); return `${d ? `<line x1="${X(d * SPD)}" x2="${X(d * SPD)}" y1="${y0}" y2="${y0 + ph}" stroke="#dfe2e7"/>` : ''}<text x="${X(d * SPD + 48)}" y="${H - 14}" font-size="11" text-anchor="middle" fill="var(--ink3)">${md(dt)} ${DOW[dt.getDay()]}${HOLIDAYS.has(iso(dt)) ? '·휴일' : ''}</text>`; }).join('');
+  const hover = Array.from({ length: 7 * 24 }, (_, h) => { const i = h * 4, v = e.p[w * 7 * SPD + i], dt = dayDate(w * 7 + Math.floor(h / 24)), idle = !isWork(w * 7 + Math.floor(h / 24), (h % 24) * 4);
+    return `<rect x="${X(i)}" y="${y0}" width="${X(i + 4) - X(i)}" height="${ph}" fill="transparent" data-tip="${md(dt)} ${DOW[dt.getDay()]} ${String(h % 24).padStart(2, '0')}:00<br><b>${fmt(v, 1)} kW</b> · ${idle ? (v > thr ? '비가동 · 허용 초과' : '비가동 · 정상') : '가동'}"/>`; }).join('');
   return `<svg class="chart" viewBox="0 0 ${W} ${H}">${shade}${days}
-    ${ticks.map(t => `<line x1="${x0}" x2="${W - 10}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-opacity=".7"/><text x="${x0 - 8}" y="${Y(t) + 4}" font-size="11" text-anchor="end" fill="var(--ink3)">${fmt(t, 0)}</text>`).join('')}
-    ${waste}<path d="${path}" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
-    <line x1="${x0}" x2="${W - 10}" y1="${Y(e.allowed)}" y2="${Y(e.allowed)}" stroke="var(--ink2)" stroke-dasharray="6 4" stroke-width="1.5"/>
-    <text x="${W - 14}" y="${Y(e.allowed) - 6}" font-size="11.5" text-anchor="end" fill="var(--ink2)">허용 ${fmt(e.allowed, 1)} kW</text>
-    <text x="${x0 - 8}" y="${y0 - 12}" font-size="11" text-anchor="end" fill="var(--ink3)">kW</text>${hover}</svg>`;
+    ${[0, max / 2, max].map(t => `<line x1="${x0}" x2="${W - 6}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line-soft)"/><text x="${x0 - 6}" y="${Y(t) + 4}" font-size="10.5" text-anchor="end" fill="var(--ink3)">${fmt(t, 0)}</text>`).join('')}
+    ${waste}<path d="${path}" fill="none" stroke="var(--series)" stroke-width="1.3"/>
+    <line x1="${x0}" x2="${W - 6}" y1="${Y(e.allowed)}" y2="${Y(e.allowed)}" stroke="var(--ink2)" stroke-dasharray="5 4" stroke-width="1.2"/>
+    <text x="${W - 8}" y="${Y(e.allowed) - 5}" font-size="10.5" text-anchor="end" fill="var(--ink2)">허용 ${fmt(e.allowed, 1)} kW</text>
+    <text x="${x0 - 6}" y="${y0 - 14}" font-size="10.5" text-anchor="end" fill="var(--ink3)">kW</text>${hover}</svg>`;
 }
 function eqTrend(vals, e) {
-  const W = 620, H = 150, x0 = 40, y0 = 8, ph = 108, max = Math.max(10, Math.ceil(Math.max(...vals) * 1.15)), bw = (W - x0) / WEEKS;
-  const acts = STATE.actions.filter(a => a.eq === e.id);
+  const W = 360, H = 130, x0 = 34, y0 = 14, ph = 86, max = Math.max(10, Math.ceil(Math.max(...vals) * 1.15)), bw = (W - x0) / WEEKS;
+  const acts = STATE.actions.filter(a => a.eq === e.id && a.week < WEEKS);
   return `<svg class="chart" viewBox="0 0 ${W} ${H}">
-    ${[0, max].map(t => `<line x1="${x0}" x2="${W}" y1="${y0 + ph - t / max * ph}" y2="${y0 + ph - t / max * ph}" stroke="var(--line2)"/><text x="${x0 - 6}" y="${y0 + ph - t / max * ph + 4}" font-size="11" text-anchor="end" fill="var(--ink3)">${fmt(t, 0)}</text>`).join('')}
-    ${vals.map((v, w) => { const h = v / max * ph, x = x0 + w * bw + 5; return `<g data-tip="${weekLabel(w)}<br><b>${fmt(v, 0)} kWh</b> · ${won(WASTE[WI[e.id]][w].cost)}"><rect x="${x0 + w * bw}" y="${y0}" width="${bw}" height="${ph}" fill="transparent"/><rect x="${x}" y="${y0 + ph - h}" width="${bw - 10}" height="${Math.max(1, h)}" rx="3" fill="var(--waste)" opacity="${w === STATE.week ? 1 : .4}"/><text x="${x + (bw - 10) / 2}" y="${H - 18}" font-size="10.5" text-anchor="middle" fill="var(--ink3)">${md(dayDate(w * 7))}</text></g>`; }).join('')}
-    ${acts.map(a => { const x = x0 + a.week * bw; return `<line x1="${x}" x2="${x}" y1="${y0}" y2="${y0 + ph}" stroke="var(--good)" stroke-dasharray="3 3" stroke-width="1.5"/><text x="${x + 4}" y="${y0 + 10}" font-size="11" fill="var(--good)">조치 ${a.at}</text>`; }).join('')}
-    <line x1="${x0}" x2="${W}" y1="${y0 + ph}" y2="${y0 + ph}" stroke="var(--ink3)"/></svg>`;
+    ${[0, max].map(t => `<line x1="${x0}" x2="${W}" y1="${y0 + ph - t / max * ph}" y2="${y0 + ph - t / max * ph}" stroke="var(--line-soft)"/><text x="${x0 - 6}" y="${y0 + ph - t / max * ph + 4}" font-size="10.5" text-anchor="end" fill="var(--ink3)">${fmt(t, 0)}</text>`).join('')}
+    ${vals.map((v, w) => { const h = v / max * ph, x = x0 + w * bw + bw * .2, bwi = bw * .6; return `<g data-tip="${weekLabel(w)}<br><b>${fmt(v, 0)} kWh</b> · ${won(WASTE[WI[e.id]][w].cost)}"><rect x="${x0 + w * bw}" y="${y0}" width="${bw}" height="${ph}" fill="transparent"/><rect x="${x}" y="${y0 + ph - h}" width="${bwi}" height="${Math.max(1, h)}" rx="2" fill="var(--waste)" opacity="${w === STATE.week ? 1 : .32}"/>${w % 3 === 2 ? `<text x="${x + bwi / 2}" y="${H - 10}" font-size="10.5" text-anchor="middle" fill="var(--ink3)">${md(dayDate(w * 7))}</text>` : ''}</g>`; }).join('')}
+    ${acts.map(a => { const x = x0 + a.week * bw; return `<line x1="${x}" x2="${x}" y1="${y0 - 4}" y2="${y0 + ph}" stroke="var(--good)" stroke-dasharray="3 3"/><text x="${x + 4}" y="${y0 + 4}" font-size="10.5" fill="var(--good)">조치 ${a.at}</text>`; }).join('')}
+    <line x1="${x0}" x2="${W}" y1="${y0 + ph}" y2="${y0 + ph}" stroke="#c9ced6"/></svg>`;
 }
 
 /* =========================================================
-   7. 화면 ③ 효과 판정
+   7. 효과 판정
    ========================================================= */
 function effectRows() {
   const hpm = idleHoursPerMonth();
@@ -684,49 +773,48 @@ function effectRows() {
     return { a, e, before, aft, dropKw, mwh, cost: mwh * 1000 * 115, verdict, vt, after };
   });
 }
+
 function renderEffect() {
-  const own = STATE.role === 'owner';
+  const own = owner0();
   const rows = effectRows().filter(r => !own || r.e.owner === '김도장');
-  if (!rows.length) return `<div class="pagehead"><div><h1>내 조치 효과</h1><div class="sub">조치 전 4주와 조치 후 4주의 비가동 평균 부하를 비교합니다</div></div></div><div class="card" style="padding:40px;text-align:center"><div style="font-size:15px;font-weight:600">아직 효과를 판정할 조치가 없습니다</div><div class="muted" style="margin-top:6px">리포트에서 “차단 조치함”을 누르면 4주 뒤 이곳에 절감량이 표시되고, 부서 E-KPI 실적에 반영됩니다.</div></div>`;
+  if (!rows.length) return `<section class="card"><div class="empty" style="padding:56px 20px"><div style="font-size:14px;font-weight:600;color:var(--ink)">아직 효과를 판정할 조치가 없습니다</div><div style="margin-top:6px">리포트에서 ‘조치함’을 누르면 4주 뒤 이곳에 절감량이 표시되고 부서 E-KPI 실적에 반영됩니다.</div></div></section>`;
   const valid = rows.filter(r => r.verdict === 'done');
   const sumM = valid.reduce((a, r) => a + r.mwh, 0), sumC = valid.reduce((a, r) => a + r.cost, 0);
-  const steps = ['진단', '목표 배분', '조치', '검증'];
+  const VS = { done: 'good', check: 'warn', wait: 'mute' };
   const report = `11월 비가동 낭비 차단 활동 ${rows.length}건 중 ${valid.length}건이 베이스라인 대비 효과가 확인되었습니다. ` +
     valid.map(r => `${r.e.zone} ${r.e.name}의 ${r.a.what}은 비가동 평균 부하를 ${fmt(r.before, 1)}kW에서 ${fmt(r.aft, 1)}kW로 낮춰 월 ${fmt(r.mwh, 1)}MWh(약 ${man(r.cost)}만 원)를 줄였습니다.`).join(' ') +
-    ` ${valid.length}건 합계는 월 ${fmt(sumM, 1)}MWh, 연간 환산 약 ${fmt(sumC * 12 / 10000, 0)}만 원입니다. ` +
+    ` ${valid.length}건 합계는 월 ${fmt(sumM, 1)}MWh, 연간 환산 약 ${manR(sumC * 12)}만 원입니다. ` +
     rows.filter(r => r.verdict !== 'done').map(r => `${r.e.name}(${r.a.what})은 ${r.vt.replace(' · ', ', ')} 상태로 다음 달에 다시 판정합니다.`).join(' ');
   return `
-  <div class="pagehead"><div><h1>월간 효과 판정</h1><div class="sub">조치 전 4주 vs 조치 후 4주의 비가동 평균 부하 비교 · 판정 결과는 E-KPI 부서 실적에 반영</div></div>
-    <div class="right"><select><option>2026년 11월</option></select></div></div>
-  <div class="card" style="margin-bottom:14px"><div class="cap" style="margin-bottom:6px">이 모듈의 순환 구조 — 효과 판정은 마지막 단계입니다</div><div class="flow">${steps.map((s, i) => `<div class="${i === 3 ? 'on' : ''}">${i + 1}. ${s}</div>`).join('')}</div></div>
-  <div class="grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:14px">
-    <div class="card kpi"><div class="lab">검증된 절감량 (월)</div><div class="val">${fmt(sumM, 1)}<small>MWh</small></div><div class="delta">유효 판정 ${valid.length}건 합계</div></div>
-    <div class="card kpi"><div class="lab">절감 금액 (연간 환산)</div><div class="val">${fmt(sumC * 12 / 10000, 0)}<small>만 원</small></div><div class="delta">경부하 위주 단가 적용 (예시)</div></div>
-    <div class="card kpi"><div class="lab">온실가스 감축 (연간 환산)</div><div class="val">${fmt(sumM * 12 * 0.4541, 1)}<small>tCO₂</small></div><div class="delta">전력 배출계수 0.4541 tCO₂/MWh 적용</div></div>
+  <section class="sumbar" style="grid-template-columns:repeat(3,1fr)">
+    <div><label>검증된 절감량 (월)</label><b class="n">${fmt(sumM, 1)}<small>MWh</small></b><span class="d">유효 판정 ${valid.length}건 합계</span></div>
+    <div><label>절감 금액 (연간 환산)</label><b class="n">${manR(sumC * 12)}<small>만 원</small></b><span class="d">시간대별 예시 단가 적용</span></div>
+    <div><label>온실가스 감축 (연간 환산)</label><b class="n">${fmt(sumM * 12 * 0.4541, 1)}<small>tCO₂</small></b><span class="d">배출계수 0.4541 tCO₂/MWh</span></div>
+  </section>
+  <div class="grid2" style="grid-template-columns:minmax(0,1fr) 380px">
+    <section class="card">
+      <div class="chead"><h2>활동별 판정</h2><span class="count">${rows.length}</span><span class="cmeta">조치 전 4주 vs 조치 후 4주 · 비가동 평균 부하</span></div>
+      <table class="tbl"><thead><tr><th>활동</th><th>조치일</th><th class="num">조치 전</th><th class="num">조치 후</th><th class="num">월 절감</th><th>판정</th></tr></thead>
+      <tbody>${rows.map(r => `<tr class="row" data-open="${r.e.id}"><td class="nm"><b>${r.a.what}</b><span>${r.e.zone} · ${r.e.name}</span></td><td class="num">${r.a.at}</td><td class="num">${fmt(r.before, 1)} kW</td><td class="num">${r.aft === null ? '–' : fmt(r.aft, 1) + ' kW'}</td><td class="num">${r.verdict === 'done' ? `<b style="font-weight:600">${fmt(r.mwh, 2)} MWh</b><span class="small muted" style="display:block">${man(r.cost)}만 원</span>` : '<span class="muted">–</span>'}</td><td><span class="st ${VS[r.verdict]}"><i></i>${r.vt}</span></td></tr>`).join('')}</tbody></table>
+      <div class="tfoot small muted">유효 기준: 조치 후 4주 이상 데이터, 비가동 평균 부하 20% 이상 감소. 외기 영향이 큰 공조 설비는 기온 보정 베이스라인으로 판정합니다.</div>
+    </section>
+    <section class="card"><div class="chead"><h2>조치 전·후 비가동 평균 부하</h2><span class="cmeta">kW</span></div><div class="cbody">${effectChart(rows)}</div></section>
   </div>
-  <div class="grid two">
-    <div class="card"><h2>활동별 판정</h2><div class="cap">조치 전·후 비가동 평균 부하</div>
-      <table><thead><tr><th>활동</th><th>조치일</th><th class="num">조치 전</th><th class="num">조치 후</th><th class="num">월 절감</th><th>판정</th></tr></thead>
-      <tbody>${rows.map(r => `<tr class="row" data-eq="${r.e.id}"><td><div class="eqname">${r.a.what}</div><div class="eqsub">${r.e.zone} · ${r.e.name} · ${r.e.dept}</div></td><td>${r.a.at}</td><td class="num">${fmt(r.before, 1)} kW</td><td class="num">${r.aft === null ? '–' : fmt(r.aft, 1) + ' kW'}</td><td class="num">${r.verdict === 'done' ? `<b>${fmt(r.mwh, 2)} MWh</b><div class="eqsub">${man(r.cost)}만 원</div>` : '<span class="muted">–</span>'}</td><td><span class="chip ${r.verdict}"><span class="dot"></span>${r.vt}</span></td></tr>`).join('')}</tbody></table>
-      <div class="small muted" style="margin-top:10px">판정 기준: 조치 후 4주 이상 데이터가 있고 비가동 평균 부하가 20% 이상 줄면 “유효”. 공조처럼 외기 영향이 큰 설비는 기온 보정 베이스라인으로 판정합니다.</div>
-    </div>
-    <div class="card"><h2>조치 전·후 비가동 평균 부하</h2><div class="cap">kW</div>${effectChart(rows)}</div>
-  </div>
-  <div class="ai" style="margin-top:14px"><span class="badge">✦ AI 월간 보고 초안</span><p>${report}</p><div class="foot"><span>E-KPI 부서 평가 코멘트와 월간 보고서에 붙여 쓸 수 있는 초안입니다</span><button class="linkbtn" id="copyRep">복사</button></div></div>`;
+  <section class="card"><div class="chead"><h2>월간 보고 초안</h2><span class="aitag">AI</span><span class="cmeta"><button class="link" id="copyRep">${ic('copy', 13)}복사</button></span></div>
+    <div class="cbody"><div class="ai-sec" id="repText" style="line-height:1.7;font-size:13.5px">${report}</div><div class="small muted" style="margin-top:8px">E-KPI 부서 평가 코멘트와 월간 보고서에 붙여 쓸 수 있습니다.</div></div></section>`;
 }
 function effectChart(rows) {
-  const W = 460, rowH = 64, H = rows.length * rowH + 40, x0 = 120, max = Math.max(...rows.map(r => r.before)) * 1.2;
-  const sx = v => (W - x0 - 60) * v / max;
-  return `<div class="legend"><span><i style="background:var(--waste)"></i>조치 전</span><span><i style="background:var(--accent)"></i>조치 후</span></div>
-  <svg class="chart" viewBox="0 0 ${W} ${H}">${rows.map((r, i) => { const y = i * rowH + 8;
-    return `<g><text x="0" y="${y + 20}" font-size="12.5" fill="var(--ink)">${r.e.name}</text><text x="0" y="${y + 37}" font-size="11.5" fill="var(--ink3)">${r.a.what.length > 9 ? r.a.what.slice(0, 9) + '…' : r.a.what}</text>
-      <g data-tip="${r.e.name} · 조치 전<br><b>${fmt(r.before, 1)} kW</b>"><rect x="${x0}" y="${y + 6}" width="${sx(r.before)}" height="18" rx="4" fill="var(--waste)"/><text x="${x0 + sx(r.before) + 6}" y="${y + 19}" font-size="11.5" fill="var(--ink2)">${fmt(r.before, 1)}</text></g>
-      ${r.aft === null ? `<text x="${x0}" y="${y + 41}" font-size="11.5" fill="var(--ink3)">조치 후 데이터 없음</text>` : `<g data-tip="${r.e.name} · 조치 후<br><b>${fmt(r.aft, 1)} kW</b>"><rect x="${x0}" y="${y + 28}" width="${Math.max(2, sx(r.aft))}" height="18" rx="4" fill="var(--accent)"/><text x="${x0 + Math.max(2, sx(r.aft)) + 6}" y="${y + 41}" font-size="11.5" fill="var(--ink2)">${fmt(r.aft, 1)}</text></g>`}</g>`; }).join('')}
-    <line x1="${x0}" x2="${x0}" y1="0" y2="${H - 30}" stroke="var(--ink3)"/></svg>`;
+  const W = 340, rowH = 52, H = rows.length * rowH + 4, x0 = 104, max = Math.max(...rows.map(r => r.before)) * 1.15, sx = v => (W - x0 - 34) * v / max;
+  return `<div class="legend"><span><i style="background:var(--waste)"></i>조치 전</span><span><i style="background:var(--series)"></i>조치 후</span></div>
+  <svg class="chart" viewBox="0 0 ${W} ${H}">${rows.map((r, i) => { const y = i * rowH + 4;
+    return `<g><text x="0" y="${y + 14}" font-size="12" fill="var(--ink)">${r.e.name}</text><text x="0" y="${y + 30}" font-size="11" fill="var(--ink3)">${r.a.at} 조치</text>
+      <g data-tip="${r.e.name} · 조치 전<br><b>${fmt(r.before, 1)} kW</b>"><rect x="${x0}" y="${y + 4}" width="${Math.max(2, sx(r.before))}" height="12" rx="2" fill="var(--waste)"/><text x="${x0 + sx(r.before) + 6}" y="${y + 14}" font-size="11" fill="var(--ink2)">${fmt(r.before, 1)}</text></g>
+      ${r.aft === null ? `<text x="${x0}" y="${y + 30}" font-size="11" fill="var(--ink3)">조치 후 데이터 없음</text>` : `<g data-tip="${r.e.name} · 조치 후<br><b>${fmt(r.aft, 1)} kW</b>"><rect x="${x0}" y="${y + 20}" width="${Math.max(2, sx(r.aft))}" height="12" rx="2" fill="var(--series)"/><text x="${x0 + Math.max(2, sx(r.aft)) + 6}" y="${y + 30}" font-size="11" fill="var(--ink2)">${fmt(r.aft, 1)}</text></g>`}</g>`; }).join('')}
+    <line x1="${x0}" x2="${x0}" y1="0" y2="${H}" stroke="#c9ced6"/></svg>`;
 }
 
 /* =========================================================
-   7-2. 화면 ④ 조치 시뮬레이션 (계산: 엔진 / 문장→시나리오, 해석: LLM)
+   7-2. 조치 시뮬레이션
    ========================================================= */
 const manR = v => Math.round(v / 1e4).toLocaleString();
 const BASIC = 8000; // 기본요금 예시 단가 (원/kW·월)
@@ -810,67 +898,72 @@ function simText(r) {
   if (cav.length) t += `<br><b>확인할 점</b> · ${cav.join(' / ')}`;
   return t;
 }
+
 function simDayChart(r) {
-  const d = r.day, L = SPD, o = d * SPD, W = 1240, H = 250, x0 = 52, y0 = 20, ph = 190, pw = W - x0 - 12;
+  const d = r.day, L = SPD, o = d * SPD, W = 900, H = 240, x0 = 46, y0 = 28, ph = 176, pw = W - x0 - 8;
   let max = 0; for (let k = 0; k < L; k++) max = Math.max(max, r.facB[o + k], r.facA[o + k]);
   max = Math.ceil(max * 1.08 / 100) * 100;
   const X = k => x0 + k / L * pw, Y = v => y0 + ph - v / max * ph;
   const path = arr => { let p = ''; for (let k = 0; k < L; k++) p += `${k ? 'L' : 'M'}${X(k).toFixed(1)} ${Y(arr[o + k]).toFixed(1)}`; return p; };
-  let shade = ''; let s2 = 0; const dd = r.w * 7 + d;
-  while (s2 < SPD) { if (!isWork(dd, s2)) { let t = s2; while (t < SPD && !isWork(dd, t)) t++; shade += `<rect x="${X(s2)}" y="${y0}" width="${X(t) - X(s2)}" height="${ph}" fill="#eef0f3"/>`; s2 = t; } else s2++; }
-  const ticks = [0, max / 2, max];
-  const pk = (i, col, lab) => i >= o && i < o + L ? `<circle cx="${X(i - o)}" cy="${Y(lab === 'B' ? r.facB[i] : r.facA[i])}" r="4.5" fill="${col}" stroke="#fff" stroke-width="2"/>` : '';
+  let shade = '', s2 = 0; const dd = r.w * 7 + d;
+  while (s2 < SPD) { if (!isWork(dd, s2)) { let t = s2; while (t < SPD && !isWork(dd, t)) t++; shade += `<rect x="${X(s2)}" y="${y0}" width="${X(t) - X(s2)}" height="${ph}" fill="#f1f2f5"/>`; s2 = t; } else s2++; }
+  const pk = (i, col, arr) => i >= o && i < o + L ? `<circle cx="${X(i - o)}" cy="${Y(arr[i])}" r="4" fill="${col}" stroke="#fff" stroke-width="2"/>` : '';
   const hov = Array.from({ length: 48 }, (_, h) => { const k = h * 2; return `<rect x="${X(k)}" y="${y0}" width="${X(k + 2) - X(k)}" height="${ph}" fill="transparent" data-tip="${hhmm(k)}<br>조치 전 <b>${fmt(r.facB[o + k], 0)} kW</b><br>조치 후 <b>${fmt(r.facA[o + k], 0)} kW</b>"/>`; }).join('');
   const dt = dayDate(dd);
-  return `<div class="legend"><span><i class="ln" style="background:var(--waste)"></i>조치 전 공장 부하</span><span><i class="ln" style="background:var(--accent)"></i>조치 후 공장 부하</span><span><i style="background:#e9ebef"></i>비가동 시간</span><span>● 주간 최대수요 지점</span></div>
+  return `<div class="legend"><span><i class="ln" style="background:var(--waste)"></i>조치 전</span><span><i class="ln" style="background:var(--series)"></i>조치 후</span><span><i style="background:#eceef2"></i>비가동 시간</span><span style="margin-left:auto" class="muted">${md(dt)}(${DOW[dt.getDay()]}) · 영향이 가장 큰 날 · ● 주간 최대수요</span></div>
   <svg class="chart" viewBox="0 0 ${W} ${H}">${shade}
-    ${ticks.map(t => `<line x1="${x0}" x2="${W - 12}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-opacity=".7"/><text x="${x0 - 8}" y="${Y(t) + 4}" font-size="11" text-anchor="end" fill="var(--ink3)">${fmt(t, 0)}</text>`).join('')}
-    ${[0, 6, 12, 18, 24].map(h => `<text x="${X(h * 4)}" y="${H - 10}" font-size="11" text-anchor="${h === 0 ? 'start' : h === 24 ? 'end' : 'middle'}" fill="var(--ink3)">${String(h).padStart(2, '0')}:00</text>`).join('')}
-    <text x="${x0 - 8}" y="${y0 - 8}" font-size="11" text-anchor="end" fill="var(--ink3)">kW</text>
-    <text x="${W - 12}" y="${y0 - 6}" font-size="12" text-anchor="end" fill="var(--ink2)">${md(dt)}(${DOW[dt.getDay()]}) · 영향이 가장 큰 날</text>
-    <path d="${path(r.facB)}" fill="none" stroke="var(--waste)" stroke-width="1.8"/>
-    <path d="${path(r.facA)}" fill="none" stroke="var(--accent)" stroke-width="1.8"/>
-    ${pk(r.iB, 'var(--waste)', 'B')}${pk(r.iA, 'var(--accent)', 'A')}${hov}</svg>`;
+    ${[0, max / 2, max].map(t => `<line x1="${x0}" x2="${W - 8}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line-soft)"/><text x="${x0 - 6}" y="${Y(t) + 4}" font-size="10.5" text-anchor="end" fill="var(--ink3)">${fmt(t, 0)}</text>`).join('')}
+    ${[0, 6, 12, 18, 24].map(h => `<text x="${X(h * 4)}" y="${H - 8}" font-size="10.5" text-anchor="${h === 0 ? 'start' : h === 24 ? 'end' : 'middle'}" fill="var(--ink3)">${String(h).padStart(2, '0')}:00</text>`).join('')}
+    <text x="${x0 - 6}" y="${y0 - 14}" font-size="10.5" text-anchor="end" fill="var(--ink3)">kW</text>
+    <path d="${path(r.facB)}" fill="none" stroke="var(--waste)" stroke-width="1.5"/>
+    <path d="${path(r.facA)}" fill="none" stroke="var(--series)" stroke-width="1.5"/>
+    ${pk(r.iB, 'var(--waste)', r.facB)}${pk(r.iA, 'var(--series)', r.facA)}${hov}</svg>`;
 }
 function renderSim() {
   const sc = STATE.simCustom || PRESETS[STATE.sim];
   const r = simulate(sc), dk = r.kB - r.kA, dc = r.cB - r.cA, dp = r.pB - r.pA;
   const eqOpts = EQUIP.filter(e => e.id !== 'E11').map(e => `<option value="${e.id}" ${sc.eqs[0] === e.id ? 'selected' : ''}>${e.zone} · ${e.name}</option>`).join('');
   const tOpts = sel => Array.from({ length: 48 }, (_, h) => h * 2).map(k => `<option value="${k}" ${k === sel ? 'selected' : ''}>${hhmm(k)}</option>`).join('') + `<option value="96" ${sel === 96 ? 'selected' : ''}>24:00</option>`;
-  const delta = (v, unit, dec = 0, good = true) => `<span class="${(v > 0) === good ? 'down' : 'up'}">${v > 0 ? '▼' : v < 0 ? '▲' : ''} ${fmt(Math.abs(v), dec)}${unit}</span>`;
-  return `
-  <div class="pagehead"><div><h1>조치 시뮬레이션</h1><div class="sub">지난주(${weekLabel(WEEKS - 1)}) 실제 15분 데이터에 조치를 적용해 사용량·요금·공장 최대수요 변화를 계산합니다</div></div></div>
-  <div class="card" style="margin-bottom:14px">
-    <h2>✦ 말로 물어보기</h2><div class="cap">문장을 AI가 시나리오(설비·시간대·방식)로 바꿔 엔진에 넘깁니다 · 미리보기는 예시 문장만 이해합니다</div>
-    <div class="nlbox"><input id="nlIn" value="주말에 도장 배기팬 다 끄면 얼마나 줄어?" /><button class="btn primary" id="nlGo">시뮬레이션</button></div>
-    <div class="presets">${Object.entries(PRESETS).map(([k, v]) => `<button data-preset="${k}" class="${!STATE.simCustom && STATE.sim === k ? 'on' : ''}">${v.label}</button>`).join('')}</div>
-  </div>
-  <details class="card" style="margin-bottom:14px" ${STATE.simCustom ? 'open' : ''}><summary style="cursor:pointer"><b>세부 조정</b> <span class="small muted">설비·요일·시간을 직접 바꿔 다시 계산 · 지금 시나리오: ${STATE.simCustom ? '직접 설정' : PRESETS[STATE.sim].label}</span></summary><div style="height:12px"></div>
-    <div class="simform">
-      <div><label>설비</label><select id="sEq">${eqOpts}</select>${sc.eqs.length > 1 ? `<div class="small muted" style="margin-top:4px">외 ${sc.eqs.length - 1}대 함께</div>` : ''}</div>
-      <div><label>방식</label><select id="sType"><option value="off" ${sc.type === 'off' ? 'selected' : ''}>끄기</option><option value="shift" ${sc.type === 'shift' ? 'selected' : ''}>옮기기</option></select></div>
-      <div><label>요일</label><select id="sDays"><option value="weekday" ${sc.days === 'weekday' ? 'selected' : ''}>평일</option><option value="weekend" ${sc.days === 'weekend' ? 'selected' : ''}>주말·휴일</option><option value="all" ${sc.days === 'all' ? 'selected' : ''}>매일</option><option value="idle" ${sc.days === 'idle' ? 'selected' : ''}>비가동 시간 전체</option></select></div>
-      <div><label>시작</label><select id="sFrom" ${sc.days === 'idle' ? 'disabled' : ''}>${tOpts(sc.from)}</select></div>
-      <div><label>종료</label><select id="sTo" ${sc.days === 'idle' ? 'disabled' : ''}>${tOpts(sc.to)}</select></div>
-      <div><label>옮길 시작 시각</label><select id="sShift" ${sc.type === 'shift' ? '' : 'disabled'}>${tOpts(sc.shiftTo ?? 20)}</select></div>
-      <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end"><label style="margin:0;display:flex;gap:5px;align-items:center"><input type="checkbox" id="sReb" ${sc.rebound ? 'checked' : ''}/> 재가동 부하 반영</label><button class="btn primary" id="sRun">실행</button></div>
+  const dlt = (v, unit) => `<span class="${v > 0 ? 'down' : 'up'}">${v > 0 ? '▼' : '▲'} ${fmt(Math.abs(v), 0)}${unit}</span>`;
+  return `<div class="simwrap">
+    <section class="card simleft">
+      <div class="chead"><h2>시나리오</h2></div>
+      <div class="cbody">
+        <div class="nl"><label class="small muted" for="nlIn">말로 물어보기 <span class="aitag" style="margin-left:4px">AI</span></label><input type="text" id="nlIn" value="주말에 도장 배기팬 다 끄면 얼마나 줄어?" /><button class="btn primary" id="nlGo" style="justify-content:center">계산하기</button></div>
+        <div class="secline" style="margin-top:16px">추천 시나리오</div>
+        <div class="plist">${Object.entries(PRESETS).map(([k, v]) => `<button data-preset="${k}" class="${!STATE.simCustom && STATE.sim === k ? 'on' : ''}"><span class="rb"></span><span>${v.label}</span></button>`).join('')}</div>
+        <details class="adv" ${STATE.simCustom ? 'open' : ''}><summary>${ic('right', 14)}세부 조정</summary>
+          <div class="fgrid">
+            <div class="full"><label>설비</label><select id="sEq">${eqOpts}</select>${sc.eqs.length > 1 ? `<div class="small muted" style="margin-top:4px">외 ${sc.eqs.length - 1}대 함께 적용</div>` : ''}</div>
+            <div><label>방식</label><select id="sType"><option value="off" ${sc.type === 'off' ? 'selected' : ''}>끄기</option><option value="shift" ${sc.type === 'shift' ? 'selected' : ''}>옮기기</option></select></div>
+            <div><label>요일</label><select id="sDays"><option value="weekday" ${sc.days === 'weekday' ? 'selected' : ''}>평일</option><option value="weekend" ${sc.days === 'weekend' ? 'selected' : ''}>주말·휴일</option><option value="all" ${sc.days === 'all' ? 'selected' : ''}>매일</option><option value="idle" ${sc.days === 'idle' ? 'selected' : ''}>비가동 시간 전체</option></select></div>
+            <div><label>시작</label><select id="sFrom">${tOpts(sc.from)}</select></div>
+            <div><label>종료</label><select id="sTo">${tOpts(sc.to)}</select></div>
+            <div><label>옮길 시작 시각</label><select id="sShift">${tOpts(sc.shiftTo ?? 20)}</select></div>
+            <div style="display:flex;align-items:flex-end"><label class="chk" style="margin:0 0 7px"><input type="checkbox" id="sReb" ${sc.rebound ? 'checked' : ''}/> 재가동 부하</label></div>
+            <div class="full"><button class="btn primary" id="sRun" style="width:100%;justify-content:center">다시 계산</button></div>
+          </div>
+        </details>
+      </div>
+    </section>
+    <div class="stack">
+      <section class="sumbar" style="grid-template-columns:repeat(4,1fr)">
+        <div><label>대상 설비 사용량 (주)</label><b class="n">${fmt(r.kA, 0)}<small>kWh</small></b><span class="d">${Math.abs(dk) < 1 ? '시간만 이동 · 총량 같음' : `${dlt(dk, ' kWh')} · 전 ${fmt(r.kB, 0)}`}</span></div>
+        <div><label>전력량요금 (연 환산)</label><b class="n">${dc >= 0 ? '−' : '+'}${manR(Math.abs(dc) * 52)}<small>만 원</small></b><span class="d">주 ${won(Math.abs(dc))} ${dc >= 0 ? '절감' : '증가'}</span></div>
+        <div><label>공장 최대수요 (주간)</label><b class="n">${fmt(r.pA, 0)}<small>kW</small></b><span class="d">${dp > 0.5 ? dlt(dp, ' kW') : '변화 없음'} · 전 ${fmt(r.pB, 0)}</span></div>
+        <div><label>기본요금 (연, 상한)</label><b class="n">${dp > 0.5 ? '−' + manR(dp * BASIC * 12) : '0'}<small>만 원</small></b><span class="d">이 주가 연중 피크일 때</span></div>
+      </section>
+      <section class="card"><div class="chead"><h2>해석</h2><span class="aitag">AI</span><span class="cmeta"><button class="link" id="simSave">비교함에 담기</button></span></div><div class="cbody"><div class="ai-sec" style="line-height:1.7;font-size:13.5px">${simText(r)}</div></div></section>
+      <section class="card"><div class="chead"><h2>공장 15분 부하 · 조치 전후</h2></div><div class="cbody">${simDayChart(r)}</div></section>
+      ${STATE.simRuns.length ? `<section class="card"><div class="chead"><h2>비교함</h2><span class="count">${STATE.simRuns.length}</span></div><table class="tbl"><thead><tr><th>시나리오</th><th class="num">사용량 감소 (주)</th><th class="num">전력량요금 (연)</th><th class="num">최대수요 감소</th><th class="num">기본요금 (연, 상한)</th><th></th></tr></thead><tbody>${STATE.simRuns.map((x, i) => `<tr><td>${x.label}</td><td class="num">${fmt(x.dk, 0)} kWh</td><td class="num">${manR(x.dc * 52)}만 원</td><td class="num">${x.dp > 0.5 ? fmt(x.dp, 0) + ' kW' : '–'}</td><td class="num">${x.dp > 0.5 ? manR(x.dp * BASIC * 12) + '만 원' : '–'}</td><td class="num"><button class="btn sm ghost" data-rmrun="${i}">빼기</button></td></tr>`).join('')}</tbody></table></section>` : ''}
     </div>
-  </details>
-  <div class="grid kpis" style="grid-template-columns:repeat(4,1fr)">
-    <div class="card kpi"><div class="lab">대상 설비 사용량 (주)</div><div class="val">${fmt(r.kA, 0)}<small>kWh</small></div><div class="delta">${Math.abs(dk) < 1 ? '변화 없음 (시간만 이동)' : delta(dk, ' kWh')} · 조치 전 ${fmt(r.kB, 0)}</div></div>
-    <div class="card kpi"><div class="lab">전력량요금 (연 환산)</div><div class="val">${dc >= 0 ? '−' : '+'}${manR(Math.abs(dc) * 52)}<small>만 원</small></div><div class="delta">주 ${won(Math.abs(dc))} ${dc >= 0 ? '절감' : '증가'} · 시간대별 예시 단가</div></div>
-    <div class="card kpi"><div class="lab">공장 최대수요 (주간)</div><div class="val">${fmt(r.pA, 0)}<small>kW</small></div><div class="delta">${dp > 0.5 ? delta(dp, ' kW') : '변화 없음'} · 조치 전 ${fmt(r.pB, 0)}</div></div>
-    <div class="card kpi"><div class="lab">기본요금 영향 (연, 상한)</div><div class="val">${dp > 0.5 ? '−' + manR(dp * BASIC * 12) : '0'}<small>만 원</small></div><div class="delta">${fmt(BASIC, 0)}원/kW·월 예시 · 연중 피크일 때</div></div>
-  </div>
-  <div class="ai"><span class="badge">✦ AI 해석</span><p>${simText(r)}</p><div class="foot"><span>숫자는 시뮬레이션 엔진 결과이고, AI는 의미와 확인할 점을 정리했습니다</span><button class="linkbtn" id="simSave">비교함에 담기</button></div></div>
-  <div class="card" style="margin-bottom:14px"><h2>공장 15분 부하 · 조치 전후</h2>${simDayChart(r)}</div>
-  ${STATE.simRuns.length ? `<div class="card"><h2>시나리오 비교함</h2><div class="cap">담아 둔 시나리오를 나란히 비교합니다</div><table><thead><tr><th>시나리오</th><th class="num">사용량 감소 (주)</th><th class="num">전력량요금 (연)</th><th class="num">최대수요 감소</th><th class="num">기본요금 (연, 상한)</th><th></th></tr></thead><tbody>${STATE.simRuns.map((x, i) => `<tr><td>${x.label}</td><td class="num">${fmt(x.dk, 0)} kWh</td><td class="num">${manR(x.dc * 52)}만 원</td><td class="num">${x.dp > 0.5 ? fmt(x.dp, 0) + ' kW' : '–'}</td><td class="num">${x.dp > 0.5 ? manR(x.dp * BASIC * 12) + '만 원' : '–'}</td><td><button class="btn ghost" data-rmrun="${i}">빼기</button></td></tr>`).join('')}</tbody></table></div>` : ''}`;
+  </div>`;
 }
 function bindSim(m) {
-  const r = () => { STATE.simCustom = null; };
-  m.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { r(); STATE.sim = b.dataset.preset; render(); });
-  const go2 = () => { const k = nlParse($('#nlIn').value); if (!k) { flash('미리보기에서는 배기팬·압축기·예열·옮기기·공조기 예시만 이해합니다.'); return; } r(); STATE.sim = k; render(); flash(`AI가 “${PRESETS[k].label}”로 해석했습니다.`); };
-  $('#nlGo').onclick = go2; $('#nlIn').onkeydown = ev => { if (ev.key === 'Enter') go2(); };
+  const clear = () => { STATE.simCustom = null; };
+  m.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { clear(); STATE.sim = b.dataset.preset; render(); });
+  const run = () => { const k = nlParse($('#nlIn').value); if (!k) { flash('미리보기에서는 배기팬·압축기·예열·옮기기·공조기 예시만 이해합니다.', 'info'); return; } clear(); STATE.sim = k; render(); flash(`AI가 “${PRESETS[k].label}”(으)로 해석했습니다.`); };
+  $('#nlGo').onclick = run; $('#nlIn').onkeydown = ev => { if (ev.key === 'Enter') run(); };
   const sync = () => { const sh = $('#sType').value === 'shift', idle = $('#sDays').value === 'idle'; $('#sShift').disabled = !sh; $('#sReb').disabled = sh; $('#sFrom').disabled = $('#sTo').disabled = idle; };
   $('#sType').onchange = sync; $('#sDays').onchange = sync; sync();
   $('#sRun').onclick = () => {
@@ -879,13 +972,13 @@ function bindSim(m) {
     STATE.sim = 'custom'; render();
   };
   $('#simSave').onclick = () => { const sc = STATE.simCustom || PRESETS[STATE.sim], x = simulate(sc);
-    const lab = STATE.simCustom ? `${EQ[sc.eqs[0]].name}${sc.eqs.length > 1 ? ` 외 ${sc.eqs.length - 1}대` : ''} · ${sc.type === 'off' ? '끄기' : '옮기기'} ${sc.days === 'idle' ? '비가동 전체' : `${hhmm(sc.from)}–${hhmm(sc.to % 96 === 0 && sc.to ? 96 : sc.to).replace('24:00', '24:00')}`}${sc.type === 'shift' ? ` → ${hhmm(sc.shiftTo)}` : ''}` : PRESETS[STATE.sim].label;
+    const lab = STATE.simCustom ? `${EQ[sc.eqs[0]].name}${sc.eqs.length > 1 ? ` 외 ${sc.eqs.length - 1}대` : ''} · ${sc.type === 'off' ? '끄기' : '옮기기'} ${sc.days === 'idle' ? '비가동 전체' : `${hhmm(sc.from)}–${sc.to === 96 ? '24:00' : hhmm(sc.to)}`}${sc.type === 'shift' ? ` → ${hhmm(sc.shiftTo)}` : ''}` : PRESETS[STATE.sim].label;
     STATE.simRuns.push({ label: lab, dk: x.kB - x.kA, dc: x.cB - x.cA, dp: x.pB - x.pA }); render(); flash('비교함에 담았습니다.'); };
   m.querySelectorAll('[data-rmrun]').forEach(b => b.onclick = () => { STATE.simRuns.splice(+b.dataset.rmrun, 1); render(); });
 }
 
 /* =========================================================
-   8. 조치·예외 처리, 모달, 알림, 질의
+   8. 조치·모달·알림·질의
    ========================================================= */
 const today = '11/23';
 function setStatus(id, s, note) {
@@ -900,29 +993,19 @@ function undo(id) {
   STATE.actions = STATE.actions.filter(a => !(a.eq === id && a.at === today));
   (STATE.log[id] = STATE.log[id] || []).push({ at: today, t: '상태 되돌림' });
 }
-function openModal(html) { $('#modal').innerHTML = html; $('#modalBg').style.display = 'flex'; }
-function closeModal() { $('#modalBg').style.display = 'none'; $('#modal').classList.remove('wide'); }
-$('#modalBg').addEventListener('click', ev => { if (ev.target.id === 'modalBg') closeModal(); });
 
+function openModal(html, wide) { $('#modal').innerHTML = html; $('#modal').classList.toggle('wide', !!wide); $('#modalBg').style.display = 'flex'; setTimeout(() => $('#modal').querySelector('textarea, select, input, .btn.primary')?.focus(), 30); }
+function closeModal() { $('#modalBg').style.display = 'none'; }
+$('#modalBg').addEventListener('click', ev => { if (ev.target.id === 'modalBg') closeModal(); });
 function askDone(id) {
   const e = EQ[id];
-  openModal(`<h3>차단 조치함</h3><div class="small muted">${e.zone} · ${e.name}</div>
-    <label>어떤 조치를 했나요?</label>
-    <select id="mWhat"><option>퇴근 시 수동 정지</option><option>타이머·스케줄 설정</option><option>운전 모드 변경</option><option>센서 교체·설치</option><option>기타</option></select>
-    <label>메모 (선택)</label><input id="mNote" placeholder="예: 금요일 퇴근 점검표에 추가" />
-    <div class="small muted" style="margin-top:10px">조치 후 4주 데이터가 쌓이면 효과 판정 화면에서 절감량이 자동으로 계산됩니다.</div>
-    <div class="row-end"><button class="btn" onclick="closeModal()">취소</button><button class="btn primary" id="mOk">저장</button></div>`);
-  $('#mOk').onclick = () => { setStatus(id, 'done', $('#mWhat').value); closeModal(); render(); flash('조치를 저장했습니다. 효과 판정에 “판정 대기”로 추가됩니다.'); };
-}
-function askExc(id) {
-  const e = EQ[id];
-  openModal(`<h3>예외 등록</h3><div class="small muted">${e.zone} · ${e.name} — 비가동 시간에도 운전이 필요한 경우</div>
-    <label>사유</label><select id="mWhy"><option>안전·환기 상 항상 운전 필요</option><option>품질 유지 (온습도 등)</option><option>설비 보호 (동파·결로 방지)</option><option>주말 특근·시운전</option><option>기타</option></select>
-    <label>기간</label><select id="mFor"><option>이번 주만</option><option>1개월</option><option>3개월</option><option>상시 (에너지팀 승인 필요)</option></select>
-    <label>예외 기간 허용 부하 (kW)</label><input id="mKw" type="number" value="${Math.round(e.rated * 0.9)}" />
-    <div class="small muted" style="margin-top:10px">예외 기간이 끝나면 다시 판정 대상이 되고, 담당자에게 재확인을 요청합니다.</div>
-    <div class="row-end"><button class="btn" onclick="closeModal()">취소</button><button class="btn primary" id="mOk">등록</button></div>`);
-  $('#mOk').onclick = () => { setStatus(id, 'exc', `${$('#mWhy').value} · ${$('#mFor').value}`); closeModal(); render(); flash('예외로 등록했습니다. 기간 동안 리포트에서 제외됩니다.'); };
+  openModal(`<div class="m-head"><h3>차단 조치함</h3><p>${e.zone} · ${e.name}</p></div>
+    <div class="m-body"><label>어떤 조치를 했나요?</label>
+      <select id="mWhat"><option>퇴근 시 수동 정지</option><option>타이머·스케줄 설정</option><option>운전 모드 변경</option><option>센서 교체·설치</option><option>기타</option></select>
+      <label>메모 (선택)</label><input type="text" id="mNote" placeholder="예: 금요일 퇴근 점검표에 추가" />
+      <p class="small muted" style="margin:12px 0 0">조치 후 4주가 지나면 효과 판정에서 절감량이 자동으로 계산됩니다.</p></div>
+    <div class="m-foot"><button class="btn" data-mclose>취소</button><button class="btn primary" id="mOk">저장</button></div>`);
+  $('#mOk').onclick = () => { setStatus(id, 'done', $('#mWhat').value); closeModal(); render(); flash('조치를 저장했습니다. 효과 판정에 ‘판정 대기’로 추가됩니다.'); };
 }
 // LLM: 현장 담당자가 말로 적은 상황 → 예외·조치·확인 요청으로 구조화 (데모: 키워드 규칙으로 재현)
 const FREE_EX = {
@@ -946,91 +1029,130 @@ function parseFree(t, e) {
   if (!out.length) out.push({ k: 'check', d: '확인 필요 · 내용 확인', s: '에너지팀이 내용을 검토합니다' });
   return out;
 }
+
 function askFree(id) {
   const e = EQ[id];
-  openModal(`<h3>다른 사유</h3><div class="small muted">${e.zone} · ${e.name} — 고르거나 한 줄로 적으면 AI가 예외·조치·확인 요청으로 나눠 정리합니다</div>
-    <div class="presets" id="fQuick"><button>항상 운전이 필요한 설비예요</button><button>특근·시운전 때문이었어요</button><button>현장 확인이 필요해요</button></div>
-    <label>현장 상황 (자유롭게)</label><textarea id="fText" rows="3" placeholder="예: ${FREE_EX[id] || FREE_EX.E01}">${FREE_EX[id] || ''}</textarea>
-    <div style="margin-top:8px"><button class="btn" id="fParse" style="color:var(--ai);border-color:#ddd5fb">✦ AI로 정리</button></div>
-    <div class="parsed" id="fOut"></div>
-    <div class="row-end"><button class="btn" onclick="closeModal()">취소</button><button class="btn primary" id="fOk" disabled>이대로 저장</button></div>`);
-  $('#modal').classList.add('wide');
+  openModal(`<div class="m-head"><h3>다른 사유</h3><p>${e.zone} · ${e.name} — 고르거나 한 줄로 적으면 AI가 예외·조치·확인 요청으로 나눠 정리합니다</p></div>
+    <div class="m-body">
+      <div class="quick" id="fQuick"><button class="chipbtn">항상 운전이 필요한 설비예요</button><button class="chipbtn">특근·시운전 때문이었어요</button><button class="chipbtn">현장 확인이 필요해요</button></div>
+      <label for="fText">현장 상황</label><textarea id="fText" rows="3" placeholder="예: ${FREE_EX[id] || FREE_EX.E01}">${FREE_EX[id] || ''}</textarea>
+      <div style="margin-top:8px"><button class="btn sm" id="fParse"><span class="aitag" style="height:16px">AI</span>정리하기</button></div>
+      <div id="fOut"></div>
+    </div>
+    <div class="m-foot"><button class="btn" data-mclose>취소</button><button class="btn primary" id="fOk" disabled>이대로 저장</button></div>`, true);
   let items = [];
+  const KL = { exc: ['예외', 'mute'], done: ['조치', 'good'], check: ['확인 필요', 'warn'], note: ['메모', 'mute'] };
   $('#fQuick').querySelectorAll('button').forEach(b => b.onclick = () => { $('#fText').value = b.textContent; $('#fParse').click(); });
   $('#fParse').onclick = () => {
     items = parseFree($('#fText').value, e);
-    const ic = { exc: ['exc', '예외'], done: ['done', '조치'], check: ['check', '확인'], note: ['wait', '메모'] };
-    $('#fOut').innerHTML = `<div class="small muted">${items.length}건으로 정리했습니다. 맞으면 저장하세요.</div>` + items.map(x => `<div class="pc"><span class="chip ${ic[x.k][0]}">${ic[x.k][1]}</span><div><div>${x.d}</div><div class="small muted">${x.s}</div></div></div>`).join('');
+    $('#fOut').innerHTML = `<div class="parsed">${items.map(x => `<div class="pc"><span class="st ${KL[x.k][1]}"><i></i>${KL[x.k][0]}</span><div>${x.d.replace(/^(조치|예외|확인 필요|메모) · /, '')}<span>${x.s}</span></div></div>`).join('')}</div><p class="small muted" style="margin:8px 0 0">${items.length}건으로 정리했습니다. 맞으면 저장하세요.</p>`;
     $('#fOk').disabled = false;
   };
   $('#fOk').onclick = () => {
     const main = items.find(x => x.k === 'done') || items.find(x => x.k === 'exc') || items[0];
     items.filter(x => x !== main).forEach(x => (STATE.log[id] = STATE.log[id] || []).push({ at: today, t: `${x.d} (AI 정리)` }));
     setStatus(id, main.k === 'note' ? 'check' : main.k, items.map(x => x.d).join(' / ') + ' (AI 정리)');
-    closeModal(); $('#modal').classList.remove('wide'); render(); flash(`${items.length}건을 기록했습니다.`);
+    closeModal(); render(); flash(`${items.length}건을 기록했습니다.`);
   };
 }
-function flash(msg) { const t = $('#toast'); t.style.right = $('#drawer').style.display === 'flex' ? '424px' : '24px'; t.style.borderLeftColor = 'var(--good)'; t.innerHTML = `<div class="t2" style="margin:0">${msg}</div>`; t.style.display = 'block'; clearTimeout(flash.h); flash.h = setTimeout(() => t.style.display = 'none', 2600); }
-
+function flash(msg, kind = 'ok') {
+  const t = $('#toast');
+  t.innerHTML = `<div class="tt">${kind === 'ok' ? `<span style="color:var(--good)">${ic('check')}</span>` : `<span style="color:var(--ink3)">${ic('info')}</span>`}<div class="t2" style="font-weight:500">${msg}</div></div>`;
+  t.style.display = 'block'; clearTimeout(flash.h); flash.h = setTimeout(() => t.style.display = 'none', 2600);
+}
 $('#alertSim').onclick = () => {
-  const mine = STATE.role === 'owner', e = mine ? EQ.E01 : EQ.E05, t = $('#toast');
-  t.style.borderLeftColor = 'var(--waste)';
-  t.innerHTML = `<div class="t1"><span>실시간 알림 · 비가동 낭비</span><span>금 23:15</span></div>
-    <div class="t2">${mine ? '도장 2동 배기팬 #1이 14kW로 운전 중입니다' : '공기압축기 3호기가 42kW로 운전 중입니다'}</div>
-    <div class="t3">퇴근(22:00) 후 1시간이 지났습니다. 주말 동안 이대로면 약 <b>${mine ? '0.7MWh(약 8만 원)' : '2.4MWh(약 27만 원)'}</b>입니다. 담당: ${e.owner}</div>
-    <div class="acts"><button class="btn primary" id="tGo">설비 보기</button><button class="btn" id="tDone">정지했어요</button><button class="btn ghost" id="tX">닫기</button></div>`;
-  t.style.right = $('#drawer').style.display === 'flex' ? '424px' : '24px'; t.style.display = 'block'; clearTimeout(flash.h);
-  $('#tGo').onclick = () => { t.style.display = 'none'; go('detail', { eq: e.id }); };
+  const mine = owner0(), e = mine ? EQ.E01 : EQ.E05, t = $('#toast');
+  t.innerHTML = `<div class="tt"><span style="color:var(--waste)">${ic('alert')}</span><div style="flex:1"><div class="t1">비가동 낭비 · 금 23:15</div>
+    <div class="t2">${mine ? '도장 2동 배기팬 #1이 14 kW로 운전 중' : '공기압축기 3호기가 42 kW로 운전 중'}</div>
+    <div class="t3">퇴근 후 1시간이 지났습니다. 주말 동안 이대로면 약 ${mine ? '0.7 MWh(8만 원)' : '2.4 MWh(27만 원)'}입니다. 담당 ${e.owner}</div></div></div>
+    <div class="acts"><button class="btn sm primary" id="tGo">설비 보기</button><button class="btn sm" id="tDone">정지했어요</button><button class="btn sm ghost" id="tX">닫기</button></div>`;
+  t.style.display = 'block'; clearTimeout(flash.h);
+  $('#tGo').onclick = () => { t.style.display = 'none'; if (STATE.page !== 'report') { STATE.page = 'report'; render(); } openSheet({ type: 'eq', id: e.id }); };
   $('#tDone').onclick = () => { t.style.display = 'none'; setStatus(e.id, 'done', '퇴근 시 수동 정지'); render(); flash('정지 기록을 남겼습니다.'); };
   $('#tX').onclick = () => t.style.display = 'none';
 };
-
 // 질의 (미리보기)
 function answer(q) {
   const e = EQ[STATE.eq], w = STATE.week;
   if (q.startsWith('왜')) return { a: reasonText(e, w).replace(/<\/?b>/g, ''), src: `판정 API · ${e.id} · ${weekLabel(w)}` };
   if (q.startsWith('지난달')) { const a = [8, 9, 10, 11].reduce((s, x) => s + WASTE[WI[e.id]][x].kwh, 0), b = [4, 5, 6, 7].reduce((s, x) => s + WASTE[WI[e.id]][x].kwh, 0);
     return { a: `${e.name}의 최근 4주 비가동 낭비는 ${fmt(a, 0)}kWh로, 그 전 4주(${fmt(b, 0)}kWh)보다 ${a >= b ? fmt(a - b, 0) + 'kWh 늘었습니다' : fmt(b - a, 0) + 'kWh 줄었습니다'}. ${a > b * 1.5 ? '최근에 새로 생긴 패턴이라 설정 변경이나 운전 방식 변화를 먼저 확인해 보세요.' : ''}`, src: '주간 집계 API · 최근 8주' }; }
-  if (q.startsWith('이 설비')) return { a: `알겠습니다. ${e.name}을 예외로 등록하려면 사유와 기간이 필요합니다. 등록 화면을 열어 드릴게요. 상시 예외는 에너지팀 승인 후 적용됩니다.`, src: '조치는 사람이 화면에서 확정합니다', act: () => askExc(e.id) };
+  if (q.startsWith('이 설비')) return { a: `알겠습니다. ${e.name}을 예외로 등록하려면 사유와 기간이 필요합니다. 등록 화면을 열어 드릴게요. 상시 예외는 에너지팀 승인 후 적용됩니다.`, src: '조치는 사람이 화면에서 확정합니다', act: () => askFree(e.id) };
   if (q.startsWith('건조로')) { const x = simulate(PRESETS.p4);
     return { a: `건조로 2호기의 14–16시 고온 공정을 05–07시로 옮기면 공장 최대수요가 ${fmt(x.pB, 0)}kW에서 ${fmt(x.pA, 0)}kW로 ${fmt(x.pB - x.pA, 0)}kW 줄고, 전력량요금도 연 약 ${manR((x.cB - x.cA) * 52)}만 원 줄어듭니다. 다만 07시 이전 작업 인력 배치가 필요합니다. 시뮬레이션 화면에서 자세히 보여드릴게요.`, src: '시뮬레이션 API · 지난주 데이터', act: () => go('sim', { sim: 'p4', simCustom: null }) }; }
   if (q.startsWith('도장부')) { const rows = weekRows(w).filter(r => r.e.dept === '도장부'); const c = rows.reduce((s, r) => s + r.cost, 0);
     return { a: `지난주 도장부 낭비는 ${rows.length}개 설비, 약 ${man(c)}만 원입니다. 배기팬 3대가 ${fmt(rows.filter(r => r.e.type === '배기팬').reduce((s, r) => s + r.cost, 0) / c * 100, 0)}%를 차지하고, 세 대 모두 주말 정지가 빠진 같은 패턴입니다. 금요일 퇴근 점검표에 배기팬 정지를 넣는 것을 추천합니다.`, src: '주간 집계 API · 부서 필터' }; }
   return { a: '미리보기에서는 아래 추천 질문만 답할 수 있습니다.', src: '' };
 }
+
 const SUGG = ['왜 낭비로 판단했어?', '지난달이랑 비교하면?', '이 설비 항상 켜져 있어야 해', '도장부는 뭐가 문제야?', '건조로를 새벽으로 옮기면 피크는?'];
-function renderChat() {
-  $('#chat').innerHTML = (STATE.chat.length ? '' : `<div class="msg bot">지금 보고 있는 화면 기준으로 답합니다. 현재 설비: <b>${EQ[STATE.eq].name}</b><div class="src">설비 상세에서 다른 설비를 고르면 기준이 바뀝니다.</div></div>`) +
-    STATE.chat.map(m => m.me ? `<div class="msg me">${m.t}</div>` : `<div class="msg bot">${m.t}${m.src ? `<div class="src">근거: ${m.src}</div>` : ''}</div>`).join('');
-  $('#sugg').innerHTML = SUGG.map(s => `<button>${s}</button>`).join('');
-  $('#sugg').querySelectorAll('button').forEach(b => b.onclick = () => { const r = answer(b.textContent); STATE.chat.push({ me: true, t: b.textContent }, { t: r.a, src: r.src }); renderChat(); $('#chat').scrollTop = 1e6; if (r.act) setTimeout(r.act, 400); });
+function sheetChat() {
+  return `<div class="sh-head"><div><div class="crumb">미리보기 · 실제로는 베드록이 판정·시뮬레이션 API를 호출</div><h2>AI 질의 <span class="aitag">AI</span></h2></div><div class="sh-nav"><button class="btn ghost" data-close aria-label="닫기">${ic('x')}</button></div></div>
+    <div class="chat-body" id="chat">${(STATE.chat.length ? '' : `<div class="msg bot">지금 보고 있는 설비 기준으로 답합니다. 현재 설비: <b>${EQ[STATE.eq].name}</b><div class="src">목록에서 다른 설비를 열면 기준이 바뀝니다.</div></div>`) +
+      STATE.chat.map(m => m.me ? `<div class="msg me">${m.t}</div>` : `<div class="msg bot">${m.t}${m.src ? `<div class="src">근거 · ${m.src}</div>` : ''}</div>`).join('')}</div>
+    <div class="sugg">${SUGG.map(s => `<button class="chipbtn" data-q="${s}">${s}</button>`).join('')}</div>
+    <div class="sh-foot">숫자는 엔진 결과만 씁니다. 조치는 사람이 화면에서 확정합니다.</div>`;
 }
-$('#askBtn').onclick = () => { document.body.classList.add('dopen'); $('#drawer').style.display = 'flex'; $('#askBtn').classList.add('hidden'); renderChat(); };
-$('#drawerClose').onclick = () => { document.body.classList.remove('dopen'); $('#drawer').style.display = 'none'; $('#askBtn').classList.remove('hidden'); };
 
 /* =========================================================
-   9. 렌더
+   9. 패널·렌더
    ========================================================= */
-function render() {
-  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.page === STATE.page));
-  document.querySelectorAll('#role button').forEach(b => b.classList.toggle('on', b.dataset.role === STATE.role));
-  const m = $('#main');
-  m.innerHTML = STATE.page === 'report' ? renderReport() : STATE.page === 'detail' ? renderDetail() : STATE.page === 'sim' ? renderSim() : renderEffect();
-  if (STATE.page === 'sim') bindSim(m);
-  bindTips(m);
-  m.querySelectorAll('tr.row').forEach(tr => tr.addEventListener('click', ev => { if (ev.target.closest('button')) return; go('detail', { eq: tr.dataset.eq }); }));
-  m.querySelectorAll('[data-act]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const id = b.dataset.id, a = b.dataset.act;
-    if (a === 'done') askDone(id); else if (a === 'exc') askExc(id); else if (a === 'free') askFree(id); else if (a === 'check') { setStatus(id, 'check'); render(); flash('현장 점검을 요청했습니다.'); } else { undo(id); render(); } });
-  m.querySelectorAll('[data-sim]').forEach(b => b.onclick = ev => { ev.stopPropagation(); STATE.simCustom = null; go('sim', { sim: b.dataset.sim }); });
-  m.querySelectorAll('[data-goeq]').forEach(b => b.onclick = () => go('detail', { eq: b.dataset.goeq }));
-  m.querySelectorAll('[data-incl]').forEach(b => b.onclick = () => { STATE.include[b.dataset.incl] = true; render(); flash('낭비로 포함했습니다. 이 판단은 AI 판정 정확도 점검에 반영됩니다.'); });
-  const ws = $('#weekSel'); if (ws) ws.onchange = () => { STATE.week = +ws.value; render(); };
-  const es = $('#eqSel'); if (es) es.onchange = () => { STATE.eq = es.value; render(); if ($('#drawer').style.display === 'flex') renderChat(); };
-  const bb = $('#basisBtn'); if (bb) bb.onclick = () => $('#aiBox').classList.toggle('open');
-  const cr = $('#copyRep'); if (cr) cr.onclick = () => { navigator.clipboard?.writeText(cr.closest('.ai').querySelector('p').innerText); flash('보고 초안을 복사했습니다.'); };
+function openSheet(s) { STATE.sheet = s; if (s.type === 'eq') STATE.eq = s.id; renderSheet(); if (s.type === 'eq') render(); }
+function closeSheet(rerender = true) { const had = !!STATE.sheet; STATE.sheet = null; document.body.classList.remove('open-sheet', 'chat-open'); $('#askBtn').classList.remove('on'); if (had && rerender) render(); }
+function renderSheet() {
+  const s = STATE.sheet, sh = $('#sheet');
+  if (!s) { document.body.classList.remove('open-sheet'); return; }
+  sh.className = 'sheet' + (s.type === 'chat' ? ' chat' : '');
+  sh.innerHTML = s.type === 'eq' ? sheetEq(s.id) : sheetChat();
+  document.body.classList.add('open-sheet'); document.body.classList.toggle('chat-open', s.type === 'chat');
+  $('#askBtn').classList.toggle('on', s.type === 'chat');
+  bindTips(sh); bindCommon(sh);
+  sh.querySelectorAll('[data-close]').forEach(b => b.onclick = () => closeSheet());
+  sh.querySelectorAll('[data-nav]').forEach(b => b.onclick = () => { const list = myFilter(weekRows(STATE.week)).map(x => x.e.id), i = list.indexOf(s.id) + +b.dataset.nav; if (list[i]) openSheet({ type: 'eq', id: list[i] }); });
+  sh.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const r = answer(b.dataset.q); STATE.chat.push({ me: true, t: b.dataset.q }, { t: r.a, src: r.src }); renderSheet(); $('#chat').scrollTop = 1e6; if (r.act) setTimeout(r.act, 400); });
 }
-document.querySelectorAll('#nav button').forEach(b => b.onclick = () => go(b.dataset.page));
-document.querySelectorAll('#role button').forEach(b => b.onclick = () => { STATE.role = b.dataset.role; render(); });
+function bindCommon(root) {
+  root.querySelectorAll('[data-open]').forEach(el => { if (el.tagName === 'TR') el.tabIndex = 0; el.addEventListener('click', ev => { if (ev.target.closest('[data-act], [data-sim]')) return; openSheet({ type: 'eq', id: el.dataset.open }); }); el.addEventListener('keydown', ev => { if (ev.key === 'Enter' && ev.target === el) openSheet({ type: 'eq', id: el.dataset.open }); }); });
+  root.querySelectorAll('[data-act]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const id = b.dataset.id, a = b.dataset.act;
+    if (a === 'done') askDone(id); else if (a === 'free') askFree(id); else { undo(id); render(); } });
+  root.querySelectorAll('[data-sim]').forEach(b => b.onclick = ev => { ev.stopPropagation(); STATE.simCustom = null; go('sim', { sim: b.dataset.sim }); });
+  root.querySelectorAll('[data-incl]').forEach(b => b.onclick = () => { STATE.include[b.dataset.incl] = true; render(); flash('낭비로 포함했습니다. AI 판정 정확도 점검에 반영됩니다.'); });
+}
+const PAGES = { report: '주간 리포트', sim: '조치 시뮬레이션', effect: '효과 판정' };
+function render() {
+  const owner = owner0(), w = STATE.week;
+  const weekOpts = Array.from({ length: 4 }, (_, i) => WEEKS - 1 - i).map(x => `<option value="${x}" ${x === w ? 'selected' : ''}>${weekLabel(x)}</option>`).join('');
+  const right = STATE.page === 'report' ? `<select id="weekSel" aria-label="주 선택">${weekOpts}</select>` : STATE.page === 'sim' ? `<span class="small muted">기준 데이터 ${weekLabel(WEEKS - 1)}</span>` : `<select aria-label="월 선택"><option>2026년 11월</option></select>`;
+  const titles = { report: owner ? '내 설비의 지난주 비가동 낭비와 이번 주 할 일' : '비가동 시간(평일 22–07시, 주말·공휴일)에 허용 부하를 넘어 운전된 설비', sim: '설비를 끄거나 옮겼을 때 사용량·요금·공장 최대수요 변화를 계산합니다', effect: owner ? '내가 한 조치의 절감 효과' : '조치 전후 비가동 부하를 비교해 절감 효과를 판정합니다' };
+  let body = STATE.page === 'report' ? renderReport() : STATE.page === 'sim' ? renderSim() : renderEffect();
+  $('#main').innerHTML = `<div class="phead">
+      <div class="crumb">에너지 관리<span>/</span>비가동 낭비</div>
+      <div class="ptitle"><h1>비가동 낭비</h1><p>${titles[STATE.page]}</p></div>
+      <div class="tabs">${Object.entries(PAGES).map(([k, v]) => `<button data-page="${k}" class="${STATE.page === k ? 'on' : ''}">${k === 'effect' && owner ? '내 조치 효과' : v}</button>`).join('')}<div class="tr">${right}</div></div>
+    </div><div class="pbody">${body}</div>`;
+  const m = $('#main');
+  m.querySelectorAll('.tabs [data-page]').forEach(b => b.onclick = () => go(b.dataset.page));
+  if (STATE.page === 'sim') bindSim(m);
+  bindTips(m); bindCommon(m);
+  const ws = $('#weekSel'); if (ws) ws.onchange = () => { STATE.week = +ws.value; closeSheet(false); render(); };
+  const cr = $('#copyRep'); if (cr) cr.onclick = () => { navigator.clipboard?.writeText($('#repText').innerText); flash('보고 초안을 복사했습니다.'); };
+  document.querySelectorAll('#role button').forEach(b => b.classList.toggle('on', b.dataset.role === STATE.role));
+  $('#userName').textContent = `${ME[STATE.role].name} · ${ME[STATE.role].team}`; $('#av').textContent = ME[STATE.role].name[0];
+  if (STATE.sheet?.type === 'eq') renderSheet();
+}
+// 정적 요소
+$('#snav').innerHTML = `<div class="grp">모니터링</div><a class="dis" title="데모 범위 밖">${ic('activity')}실시간 현황</a><a class="dis" title="데모 범위 밖">${ic('grid')}대시보드</a>
+  <div class="grp">에너지 관리</div><a class="dis" title="데모 범위 밖">${ic('target')}E-KPI 성과</a><a class="dis" title="데모 범위 밖">${ic('zap')}피크 관리</a><a class="on" href="#">${ic('moon')}비가동 낭비</a>
+  <div class="grp">설정</div><a href="../">${ic('db')}기준정보<span class="ext">${ic('ext', 12)}</span></a>`;
+$('#siteIc').innerHTML = ic('down', 14);
+$('#askBtn').innerHTML = `${ic('chat')}AI 질의`;
+$('#alertSim').innerHTML = `${ic('bell')}<span class="badge-dot"></span>`;
+$('#askBtn').onclick = () => STATE.sheet?.type === 'chat' ? closeSheet() : openSheet({ type: 'chat' });
+$('#scrim').onclick = () => closeSheet();
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') { if ($('#modalBg').style.display === 'flex') closeModal(); else if (STATE.sheet) closeSheet(); } });
+document.addEventListener('click', ev => { if (ev.target.closest('[data-mclose]')) closeModal(); });
+document.querySelectorAll('#role button').forEach(b => b.onclick = () => { STATE.role = b.dataset.role; closeSheet(false); render(); });
+STATE.sheet = null;
 render();
 </script>
 </body>
