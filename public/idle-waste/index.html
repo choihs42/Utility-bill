@@ -123,10 +123,40 @@
   .dfoot { padding: 10px 16px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--ink3); }
   .askbtn { position: fixed; right: 24px; bottom: 24px; background: var(--ai); color: #fff; border: 0; border-radius: 24px; padding: 11px 16px; font-weight: 600; box-shadow: 0 6px 18px rgba(107,79,216,.35); z-index: 25; }
   .hidden { display: none !important; }
+  body.dopen main { padding-right: 424px; max-width: none; }
   .flow { display: flex; gap: 0; align-items: stretch; margin-top: 4px; }
   .flow div { flex: 1; text-align: center; font-size: 12px; padding: 8px 4px; background: var(--gray-weak); color: var(--ink2); position: relative; }
   .flow div.on { background: var(--accent-weak); color: var(--accent); font-weight: 600; }
   .flow div + div { margin-left: 3px; }
+  .todo3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 10px; }
+  .todo3 .it { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+  .todo3 .no { font-size: 12px; font-weight: 700; color: var(--ai); }
+  .todo3 .tt { font-weight: 700; font-size: 14.5px; }
+  .todo3 .why { font-size: 13px; color: var(--ink2); line-height: 1.5; }
+  .todo3 .how { font-size: 13px; line-height: 1.5; }
+  .todo3 .meta { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--ink3); margin-top: auto; padding-top: 6px; }
+  .todo3 .meta b { color: var(--ink); font-size: 13px; }
+  .conf { font-size: 11.5px; color: var(--ai); background: #fff; border: 1px solid #ddd5fb; border-radius: 10px; padding: 1px 7px; font-weight: 600; }
+  .excl { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 12px; }
+  .excl summary { cursor: pointer; font-size: 13px; color: var(--ink2); }
+  .excl .xrow { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0 2px; font-size: 13px; }
+  .steps { list-style: none; padding: 0; margin: 10px 0 0; }
+  .steps li { display: grid; grid-template-columns: 22px 230px 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px dashed #e6e1fa; font-size: 13.5px; align-items: baseline; }
+  .steps li:last-child { border-bottom: 0; }
+  .steps .ck { color: var(--ai); font-weight: 700; }
+  .steps .q { color: var(--ink2); }
+  .concl { margin-top: 10px; background: #fff; border: 1px solid #ddd5fb; border-radius: 8px; padding: 10px 12px; line-height: 1.6; }
+  .parsed { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .parsed .pc { border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; font-size: 13px; display: flex; gap: 10px; align-items: flex-start; }
+  .simform { display: grid; grid-template-columns: repeat(6, auto) 1fr; gap: 8px 10px; align-items: end; }
+  .simform label { font-size: 12px; color: var(--ink2); display: block; margin-bottom: 4px; }
+  .nlbox { display: flex; gap: 8px; margin-top: 4px; }
+  .nlbox input { flex: 1; padding: 10px 12px; font-size: 14px; border-color: #d9d2f6; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .presets button { border: 1px solid var(--line); background: #fff; border-radius: 16px; padding: 6px 11px; font-size: 12.5px; color: var(--ink); }
+  .presets button.on { border-color: var(--accent); background: var(--accent-weak); color: var(--accent); font-weight: 600; }
+  .warnline { font-size: 12.5px; color: var(--warn); background: var(--warn-weak); border-radius: 6px; padding: 6px 10px; margin-top: 8px; }
+  .modal.wide { width: 560px; }
 </style>
 </head>
 <body>
@@ -136,6 +166,7 @@
   <div class="nav" id="nav">
     <button data-page="report" class="on">주간 낭비 리포트</button>
     <button data-page="detail">설비 상세</button>
+    <button data-page="sim">조치 시뮬레이션</button>
     <button data-page="effect">효과 판정</button>
   </div>
   <div class="topright">
@@ -194,7 +225,7 @@ const EQUIP = [
   { id:'E01', name:'배기팬 #1', zone:'도장 2동', dept:'도장부', owner:'김도장', rated:15, idle:0.4, pat:'weekendFrom', from:8, lvl:0.92, type:'배기팬' },
   { id:'E02', name:'배기팬 #2', zone:'도장 2동', dept:'도장부', owner:'김도장', rated:15, idle:0.4, pat:'weekendFrom', from:8, lvl:0.9, type:'배기팬' },
   { id:'E03', name:'배기팬 #3', zone:'도장 2동', dept:'도장부', owner:'김도장', rated:11, idle:0.3, pat:'weekendSome', from:9, lvl:0.9, type:'배기팬' },
-  { id:'E04', name:'건조로 2호기', zone:'도장 2동', dept:'도장부', owner:'김도장', rated:180, idle:4, pat:'preheat', from:5, type:'건조로' },
+  { id:'E04', name:'건조로 2호기', zone:'도장 2동', dept:'도장부', owner:'김도장', rated:180, idle:4, pat:'preheat', from:5, type:'건조로', workBase:81 },
   { id:'E13', name:'쇼트블라스트 집진기', zone:'도장 1동', dept:'도장부', owner:'김도장', rated:30, idle:0.5, pat:'oneWeekend', from:10, type:'집진기' },
   { id:'E05', name:'공기압축기 3호기', zone:'유틸리티동', dept:'유틸리티팀', owner:'박설비', rated:75, idle:42, pat:'alwaysOn', type:'압축기', confirmed:0, confirmNote:'1·2호기로 비가동 수요 충분 → 3호기는 비가동 시 정지 기준' },
   { id:'E06', name:'공기압축기 1호기', zone:'유틸리티동', dept:'유틸리티팀', owner:'박설비', rated:75, idle:18, pat:'none', type:'압축기' },
@@ -223,6 +254,7 @@ for (const e of EQUIP) {
         const shape = e.type === '조명' ? 0.85 : 0.5 + 0.3 * Math.sin((s - WORK_FROM) / 60 * Math.PI);
         v = e.rated * Math.min(1, shape + (R() - 0.5) * 0.15);
         if (e.id === 'E11') v = e.idle + 2 + R();
+        if (e.id === 'E04') v = e.rated * (s >= 56 && s < 64 ? 0.95 : 0.45) * (0.95 + R() * 0.1); // 14–16시 고온 공정
       } else {
         v = e.idle * (0.9 + R() * 0.2);
         // 정상적인 종료 램프 (22:00 직후 1시간)
@@ -241,6 +273,16 @@ for (const e of EQUIP) {
     }
   }
   e.p = p;
+}
+// 사무동 조명: 11/21(토) 특근 (AI가 정상으로 판단할 사례)
+{ const e = EQ.E12, d = 11 * 7 + 5; for (let s = 36; s < 60; s++) e.p[d * SPD + s] = 19 + R() * 2; }
+// 공장 기타 부하 (모니터링 대상 외 생산설비·조명 등) → 공장 최대수요 계산용
+const OTHER = new Float32Array(N);
+for (let d = 0; d < DAYS; d++) for (let s = 0; s < SPD; s++) {
+  let v;
+  if (isWork(d, s)) { v = 1080 + 230 * Math.sin((s - WORK_FROM) / 60 * Math.PI) + (R() - 0.5) * 60; if (s >= 48 && s < 52) v -= 160; }
+  else { v = 150 + (R() - 0.5) * 20; if (workday(d) && s >= WORK_TO && s < WORK_TO + GRACE) v += 500 * (1 - (s - WORK_TO) / GRACE); }
+  OTHER[d * SPD + s] = v;
 }
 
 /* =========================================================
@@ -289,6 +331,12 @@ function idleHoursPerMonth() { let n = 0; for (let d = 0; d < DAYS; d++) n += ID
 const WASTE = EQUIP.map(e => Array.from({ length: WEEKS }, (_, w) => wasteOf(e, w)));
 const WI = Object.fromEntries(EQUIP.map((e, i) => [e.id, i]));
 
+// LLM 판정 (데모: 미리 만든 결과). 엔진이 찾은 '허용 초과 구간' 후보를 맥락으로 분류
+const AI_JUDGE = {
+  'E12-11': { verdict: 'normal', conf: 0.86, reason: '11/21(토) 09:00–15:00 사무동 특근 신청(총무팀, 결재 완료)과 운전 시간이 일치합니다. 이전 8주 토요일에는 운전 이력이 없어 일회성 특근으로 판단했습니다.' },
+};
+const CONF = { E05: 0.95, E01: 0.93, E02: 0.93, E03: 0.88, E04: 0.81, E07: 0.9, E09: 0.72, E13: 0.84 };
+
 /* =========================================================
    3. 상태 (조치·예외 이력)
    ========================================================= */
@@ -307,7 +355,7 @@ const STATE = {
     { eq:'E08', week:7, at:'10/19', what:'주말 타이머 설치' },
     { eq:'E09', week:9, at:'11/02', what:'퇴근 시 차단 체크리스트' },
   ],
-  chat: [],
+  chat: [], include: {}, sim: 'p1', simCustom: null, simRuns: [],
 };
 STATE.status.E11 = { s:'exc', note:'전산실 24시간 운전', at:'09/01' };
 const weekLabel = w => { const a = dayDate(w * 7), b = dayDate(w * 7 + 6); return `${md(a)}(월) – ${md(b)}(일)`; };
@@ -315,11 +363,13 @@ const won = v => v >= 10000 ? `${(v / 10000).toFixed(1)}만 원` : `${Math.round
 const man = v => (v / 10000).toFixed(1);
 const fmt = (v, n = 1) => v.toLocaleString(undefined, { minimumFractionDigits: n, maximumFractionDigits: n });
 
+function aiNormal(id, w) { const k = `${id}-${w}`; return AI_JUDGE[k]?.verdict === 'normal' && !STATE.include[k]; }
 function weekRows(w) {
   return EQUIP.map(e => ({ e, ...WASTE[WI[e.id]][w] }))
-    .filter(r => r.kwh > 1 && STATE.status[r.e.id]?.s !== 'exc')
+    .filter(r => r.kwh > 1 && STATE.status[r.e.id]?.s !== 'exc' && !aiNormal(r.e.id, w))
     .sort((a, b) => b.cost - a.cost);
 }
+function excludedRows(w) { return EQUIP.map(e => ({ e, ...WASTE[WI[e.id]][w], j: AI_JUDGE[`${e.id}-${w}`] })).filter(r => r.kwh > 1 && aiNormal(r.e.id, w)); }
 function statusOf(id, w) {
   const st = STATE.status[id];
   if (st) return st.s;
@@ -391,6 +441,7 @@ function renderReport() {
     <div class="card kpi"><div class="lab">조치 응답률</div><div class="val">${all.length ? Math.round(handled / all.length * 100) : 0}<small>%</small></div><div class="delta">${handled} / ${all.length}건 응답</div></div>
   </div>
   <div class="ai" id="aiBox"><span class="badge">✦ AI 요약</span><p>${ai.txt}</p><div class="foot"><span>판정 엔진 결과를 문장으로 옮긴 것입니다 · 숫자 대조 완료</span><button class="linkbtn" id="basisBtn">근거 숫자 보기</button></div><div class="basis">${ai.basis}</div></div>
+  ${todoCard(rows, owner)}
   <div class="grid two">
     <div class="card">
       <h2>${owner ? '내 설비 낭비 목록' : '낭비 설비 목록'}</h2><div class="cap">금액 순 · 행을 누르면 설비 상세로 이동</div>
@@ -399,16 +450,17 @@ function renderReport() {
         <tbody>${rows.map(r => {
           const st = STATUS_NOW(r.e.id), max = all[0].cost;
           return `<tr class="row" data-eq="${r.e.id}">
-            <td><div class="eqname">${r.e.name}</div><div class="eqsub">${r.e.zone} · ${r.e.dept}</div></td>
+            <td><div class="eqname">${r.e.name} <span class="conf" title="AI가 낭비로 판정한 신뢰도">AI ${Math.round((CONF[r.e.id] || 0.8) * 100)}%</span></div><div class="eqsub">${r.e.zone} · ${r.e.dept}</div></td>
             <td>${r.e.owner}</td>
             <td class="num">${fmt(r.hours, 1)}h</td>
             <td class="num">${fmt(r.kwh, 0)} kWh</td>
             <td class="num"><b>${won(r.cost)}</b></td>
             <td class="bar-cell"><div class="minibar" style="width:${Math.max(4, r.cost / max * 100)}%"></div></td>
             <td>${chip(st)}</td>
-            <td><div class="acts">${['todo', 'new'].includes(st) ? `<button class="btn" data-act="done" data-id="${r.e.id}">차단 조치함</button><button class="btn ghost" data-act="exc" data-id="${r.e.id}">예외</button>` : `<button class="btn ghost" data-act="undo" data-id="${r.e.id}">되돌리기</button>`}</div></td>
+            <td><div class="acts">${['todo', 'new'].includes(st) ? `<button class="btn" data-act="done" data-id="${r.e.id}">차단 조치함</button><button class="btn ghost" data-act="free" data-id="${r.e.id}">✦ 말로 입력</button>` : `<button class="btn ghost" data-act="undo" data-id="${r.e.id}">되돌리기</button>`}</div></td>
           </tr>`; }).join('') || `<tr><td colspan="8" class="muted" style="padding:24px 8px">이번 주 낭비로 잡힌 설비가 없습니다.</td></tr>`}</tbody>
       </table>
+      ${exclBlock(w)}
     </div>
     <div class="grid">
       <div class="card"><h2>부서별 낭비 금액</h2><div class="cap">공장 전체 · ${weekLabel(w)}</div>${deptChart(everyone)}</div>
@@ -417,6 +469,38 @@ function renderReport() {
   </div>`;
 }
 function STATUS_NOW(id) { return statusOf(id, STATE.week); }
+
+// LLM: 이번 주 할 일 3가지 (금액 × 실행 난이도 × 묶음 효과로 고름)
+function todoItems(rows) {
+  const open = rows.filter(r => ['todo', 'new'].includes(STATUS_NOW(r.e.id)));
+  const groups = {};
+  open.forEach(r => { const k = `${r.e.zone}|${r.e.type}`; (groups[k] = groups[k] || []).push(r); });
+  const items = Object.values(groups).map(g => {
+    const e = g[0].e, cost = g.reduce((a, r) => a + r.cost, 0), n = g.length;
+    let t, why, how, ease = 0.8, sim = null;
+    if (e.pat === 'alwaysOn') { t = `${e.name} 비가동 정지`; why = `12주째 비가동 시간에 한 번도 멈추지 않았습니다. 1·2호기만으로 비가동 수요를 감당할 수 있습니다.`; how = `퇴근 시 정지 또는 대수 제어 순서 변경 (정지만 하면 됨)`; ease = 1; sim = 'p2'; }
+    else if (n > 1) { t = `${e.zone} ${e.type} ${n}대 주말 정지`; why = `${n}대가 같은 시각에 켜져 있어 개별 실수보다 스케줄 설정 문제로 보입니다.`; how = `타이머 1회 설정으로 ${n}대를 함께 해결`; ease = 1; sim = 'p1'; }
+    else if (e.pat === 'preheat') { t = `${e.name} 예열 시작 늦추기`; why = `10/5 주부터 예열이 04:00에 시작됩니다. 생산 시작은 07:00 그대로입니다.`; how = `예열 시작 06:30으로 변경, 생산팀과 건조 품질 확인 필요`; ease = 0.6; sim = 'p3'; }
+    else if (e.pat === 'nightFrom') { t = `${e.name} 야간 스케줄 복구`; why = `11/16 주부터 22시 정지가 빠졌습니다. 같은 동 다른 공조기는 정상입니다.`; how = `BAS 스케줄 확인 후 23:00 정지 복구`; ease = 0.9; sim = 'p5'; }
+    else { t = `${e.name} 점검`; why = `비가동 시간 운전이 반복됩니다.`; how = `퇴근 시 차단 체크리스트 적용`; ease = 0.7; }
+    return { t, why, how, cost, owner: e.owner, eq: e.id, sim, score: cost * ease };
+  });
+  return items.sort((a, b) => b.score - a.score).slice(0, 3);
+}
+function todoCard(rows, owner) {
+  const its = todoItems(rows);
+  if (!its.length) return '';
+  const sum = its.reduce((a, x) => a + x.cost, 0);
+  return `<div class="ai"><span class="badge">✦ AI 추천 · 이번 주 할 일 ${its.length}가지</span>
+    <p style="margin-top:6px;font-size:13.5px" class="muted">금액, 조치 난이도, 한 번에 묶어 처리할 수 있는지를 함께 보고 골랐습니다. 세 가지를 하면 주 ${man(sum)}만 원(연 약 ${fmt(sum * 52 / 1e8, 2)}억 원)의 낭비가 사라집니다.</p>
+    <div class="todo3">${its.map((x, i) => `<div class="it"><div class="no">${i + 1}</div><div class="tt">${x.t}</div><div class="why">${x.why}</div><div class="how">→ ${x.how}</div>
+      <div class="meta"><b>주 ${won(x.cost)}</b><span>담당 ${x.owner}</span><span style="margin-left:auto;display:flex;gap:6px">${x.sim ? `<button class="btn" data-sim="${x.sim}">시뮬레이션</button>` : ''}<button class="btn ghost" data-goeq="${x.eq}">상세</button></span></div></div>`).join('')}</div></div>`;
+}
+function exclBlock(w) {
+  const ex = excludedRows(w);
+  if (!ex.length) return '';
+  return `<details class="excl"><summary>✦ AI가 정상 운전으로 판단해 제외한 후보 ${ex.length}건 (엔진은 허용 초과로 탐지)</summary>${ex.map(r => `<div class="xrow"><div style="min-width:170px"><div class="eqname">${r.e.name}</div><div class="eqsub">${r.e.zone} · ${fmt(r.kwh, 0)} kWh</div></div><div style="flex:1;line-height:1.55">${r.j.reason} <span class="conf">정상 ${Math.round(r.j.conf * 100)}%</span></div><button class="btn" data-incl="${r.e.id}-${w}">낭비로 포함</button></div>`).join('')}</details>`;
+}
 
 function deptChart(rows) {
   const by = {}; rows.forEach(r => by[r.e.dept] = (by[r.e.dept] || 0) + r.cost);
@@ -470,6 +554,41 @@ function reasonText(e, w) {
   else t += `퇴근 후 대기전력 차단이 일부 날짜에 빠진 것으로 보입니다.`;
   return t;
 }
+// LLM 조사 에이전트 (데모: 조사 단계와 결과를 템플릿으로 재현)
+function investigate(e, w) {
+  const r = WASTE[WI[e.id]][w];
+  const runs = r.runs.length, avgHours = fmt(r.hours, 1);
+  const S = [['비가동 시간 낭비 구간 조회', `지난주 ${runs}개 구간, ${avgHours}시간, ${fmt(r.kwh, 0)} kWh`]];
+  let concl, verdict = '낭비';
+  const since = w0 => md(dayDate(w0 * 7));
+  if (e.pat === 'alwaysOn') {
+    S.push(['최근 12주 비가동 시간 정지 이력', '84일 중 정지한 날 0일 (상시 운전)'], ['같은 동 압축기 1·2호기 상태', '1호기가 18 kW로 비가동 수요를 담당 중'], ['비가동 시간 헤더 압력 (가상)', '1호기 단독 운전 시에도 6.8 bar 유지'], ['에너지팀 기준', '3호기 비가동 허용 부하 0 kW로 확정됨']);
+    concl = '3호기는 비가동 시간에 필요 없는 상태로 계속 돌고 있습니다. 정지하거나 대수 제어 순서를 바꾸면 되며, 공정 영향은 낮습니다.';
+  } else if (['weekendFrom', 'weekendSome'].includes(e.pat)) {
+    S.push(['같은 구역 설비 동시 운전 여부', '배기팬 #1~#3이 같은 시각에 켜지고 꺼짐'], ['낭비 시작 시점', `${since(e.from)} 주부터 (그 전 주말은 정상 정지)`], ['주말 생산·특근 일정', '도장 2동 주말 일정 없음'], ['도장 부스 환기 규정 (문서 검색)', '도장 작업이 없을 때 상시 환기 의무 없음']);
+    concl = `개별 설비 실수보다 ${since(e.from)} 주 무렵 스케줄 설정이 바뀐 것으로 보입니다. 3대를 묶어 타이머로 한 번에 처리하는 것이 효율적입니다.`;
+  } else if (e.pat === 'preheat') {
+    S.push(['예열 시작 시각 추이', `${since(e.from)} 주부터 06:30 → 04:00으로 당겨짐`], ['생산 시작 시각 (근무 달력)', '07:00 변동 없음'], ['외기온도', '10~11월 새벽 평균 9℃, 저온 보정이 필요한 수준 아님'], ['건조로 매뉴얼 (문서 검색)', '정상 예열 소요 25~35분']);
+    concl = '예열을 2시간 30분 일찍 시작하고 있습니다. 06:30 시작으로 되돌려도 생산 시작에 지장이 없을 것으로 보이나, 건조 품질은 생산팀 확인이 필요합니다.';
+    verdict = '부분 낭비';
+  } else if (e.pat === 'nightFrom') {
+    S.push(['운전 시작·종료 시각', `${since(e.from)} 주부터 22시 정지 명령이 없음`], ['BAS 스케줄 변경 이력 (가상)', '11/13(금) 스케줄 수정 기록 1건'], ['같은 동 다른 공조기', 'AHU-3은 22시 정상 정지'], ['외기온도와의 관계', '기온과 무관하게 매일 운전']);
+    concl = '11/13 스케줄 수정 때 정지 명령이 빠진 것으로 보입니다. 스케줄을 복구하면 됩니다.';
+  } else if (e.pat === 'none' && r.kwh <= 1) {
+    S.push(['비가동 시간 운전 패턴', '허용 부하 이하로 정상']); concl = '이상이 없습니다.'; verdict = '정상';
+  } else {
+    S.push(['비가동 시간 운전 패턴', '일부 날짜에 대기전력 차단이 빠짐'], ['생산·특근 일정', '해당 시간 일정 없음']);
+    concl = '퇴근 시 차단이 일부 날짜에 빠진 것으로 보입니다. 퇴근 체크리스트 적용을 권합니다.';
+  }
+  return { S, concl, verdict };
+}
+function investBox(e, w) {
+  const v = investigate(e, w);
+  return `<div class="ai"><span class="badge">✦ AI 조사</span> <span class="conf">판정: ${v.verdict}${v.verdict !== '정상' ? ` · 신뢰도 ${Math.round((CONF[e.id] || 0.8) * 100)}%` : ''}</span>
+    <ul class="steps">${v.S.map(([q, a]) => `<li><span class="ck">✓</span><span class="q">${q}</span><span>${a}</span></li>`).join('')}</ul>
+    <div class="concl"><b>결론</b> · ${v.concl}</div>
+    <div class="foot"><span>AI가 판정 API·이력·문서를 직접 조회해 원인을 좁혔습니다. kWh·금액은 엔진 값입니다.</span>${['E01', 'E02', 'E03', 'E05', 'E04', 'E07'].includes(e.id) ? `<button class="btn" data-sim="${{ E01: 'p1', E02: 'p1', E03: 'p1', E05: 'p2', E04: 'p3', E07: 'p5' }[e.id]}" style="margin-left:auto">이 조치 시뮬레이션 →</button>` : ''}</div></div>`;
+}
 function renderDetail() {
   const e = EQ[STATE.eq], w = STATE.week, r = WASTE[WI[e.id]][w];
   const st = STATUS_NOW(e.id);
@@ -494,7 +613,7 @@ function renderDetail() {
       </div>
       <div class="actbox">
         ${st === 'exc' ? `<div class="small muted">예외 등록됨: ${STATE.status[e.id].note}</div><button class="btn" data-act="undo" data-id="${e.id}">예외 해제</button>` :
-          ['todo', 'new'].includes(st) && r.kwh > 1 ? `<button class="btn primary" data-act="done" data-id="${e.id}">✓ 차단 조치함</button><button class="btn" data-act="exc" data-id="${e.id}">예외 등록 (항상 운전 필요)</button><button class="btn" data-act="check" data-id="${e.id}">확인 필요 (현장 점검)</button>` :
+          ['todo', 'new'].includes(st) && r.kwh > 1 ? `<button class="btn primary" data-act="done" data-id="${e.id}">✓ 차단 조치함</button><button class="btn" data-act="exc" data-id="${e.id}">예외 등록 (항상 운전 필요)</button><button class="btn" data-act="check" data-id="${e.id}">확인 필요 (현장 점검)</button><button class="btn" data-act="free" data-id="${e.id}" style="color:var(--ai);border-color:#ddd5fb">✦ 상황을 말로 입력</button>` :
           st === 'done' || st === 'check' ? `<div class="small muted">${CHIP[st][1]} · ${STATE.status[e.id]?.at || ''}</div><button class="btn ghost" data-act="undo" data-id="${e.id}">되돌리기</button>` : `<div class="small muted">처리할 항목이 없습니다.</div>`}
       </div>
     </div>
@@ -504,7 +623,7 @@ function renderDetail() {
     <div class="legend"><span><i class="ln" style="background:var(--accent)"></i>전력 (kW)</span><span><i style="background:#e9ebef"></i>비가동 구간</span><span><i class="dash"></i>허용 부하</span><span><i style="background:var(--waste);opacity:.55"></i>낭비 (허용 초과분)</span></div>
     ${loadChart(e, w)}
   </div>
-  <div class="ai"><span class="badge">✦ AI 판정 근거</span><p>${reasonText(e, w)}</p><div class="foot"><span>판정은 엔진이 했고, AI는 이유를 설명만 합니다 · 숫자 대조 완료</span></div></div>
+  ${investBox(e, w)}
   <div class="grid two">
     <div class="card"><h2>주별 낭비량</h2><div class="cap">최근 12주 · kWh</div>${eqTrend(wk, e)}</div>
     <div class="card"><h2>조치 이력</h2><div class="cap">조치·예외·확인 기록</div><ul class="hist">${hist.map(h => `<li><span class="when">${h.at}</span><span>${h.t}</span></li>`).join('') || '<li class="muted">기록 없음</li>'}</ul></div>
@@ -603,6 +722,165 @@ function effectChart(rows) {
 }
 
 /* =========================================================
+   7-2. 화면 ④ 조치 시뮬레이션 (계산: 엔진 / 문장→시나리오, 해석: LLM)
+   ========================================================= */
+const manR = v => Math.round(v / 1e4).toLocaleString();
+const BASIC = 8000; // 기본요금 예시 단가 (원/kW·월)
+const PRESETS = {
+  p1: { label: '주말 동안 도장 2동 배기팬 3대 끄기', eqs: ['E01', 'E02', 'E03'], type: 'off', days: 'weekend', from: 0, to: 96 },
+  p2: { label: '압축기 3호기를 비가동 시간 내내 끄기', eqs: ['E05'], type: 'off', days: 'idle', from: 0, to: 96 },
+  p3: { label: '건조로 2호기 예열을 04:00 → 06:30 시작으로', eqs: ['E04'], type: 'off', days: 'weekday', from: 16, to: 26 },
+  p4: { label: '건조로 2호기 14–16시 고온 공정을 05–07시로 옮기기', eqs: ['E04'], type: 'shift', days: 'weekday', from: 56, to: 64, shiftTo: 20 },
+  p5: { label: '공조기 AHU-4를 평일 23시–06시 끄기 (재가동 부하 포함)', eqs: ['E07'], type: 'off', days: 'weekday', from: 92, to: 24, rebound: true },
+};
+const hhmm = s => `${String(Math.floor(s / 4)).padStart(2, '0')}:${String(s % 4 * 15).padStart(2, '0')}`;
+function nlParse(t) {
+  if (/배기팬/.test(t)) return 'p1';
+  if (/압축기|컴프/.test(t)) return 'p2';
+  if (/옮기|쉬프트|시프트|이동/.test(t)) return 'p4';
+  if (/예열/.test(t)) return 'p3';
+  if (/AHU|공조/.test(t)) return 'p5';
+  return null;
+}
+function simulate(sc) {
+  const w = WEEKS - 1, base = w * 7 * SPD, L = 7 * SPD;
+  const eqB = new Float32Array(L), eqA = new Float32Array(L), facB = new Float32Array(L);
+  for (let i = 0; i < L; i++) { let t = OTHER[base + i]; for (const e of EQUIP) t += e.p[base + i]; facB[i] = t; }
+  const warn = new Set();
+  for (const id of sc.eqs) {
+    const e = EQ[id], a = new Float32Array(L), b = new Float32Array(L);
+    for (let i = 0; i < L; i++) { b[i] = a[i] = e.p[base + i]; }
+    const dayOk = d => sc.days === 'all' || sc.days === 'idle' || (sc.days === 'weekday' ? workday(w * 7 + d) : !workday(w * 7 + d));
+    const off = i => { a[i] = Math.min(a[i], e.allowed); if (isWork(w * 7 + Math.floor(i / SPD), i % SPD)) warn.add('prod'); };
+    for (let d = 0; d < 7; d++) {
+      if (!dayOk(d)) continue;
+      if (sc.days === 'idle') { for (let s2 = 0; s2 < SPD; s2++) if (!isWork(w * 7 + d, s2)) off(d * SPD + s2); continue; }
+      const slots = [];
+      if (sc.from < sc.to) for (let s2 = sc.from; s2 < sc.to; s2++) slots.push(d * SPD + s2);
+      else { for (let s2 = sc.from; s2 < SPD; s2++) slots.push(d * SPD + s2); for (let s2 = 0; s2 < sc.to; s2++) if (d < 6) slots.push((d + 1) * SPD + s2); }
+      if (sc.type === 'off') {
+        slots.forEach(off);
+        if (sc.rebound) { const end = slots[slots.length - 1] + 1; for (let k = 0; k < 2 && end + k < L; k++) a[end + k] += e.rated * 0.55; warn.add('rebound'); }
+      } else {
+        const len = slots.length;
+        for (let k = 0; k < len; k++) {
+          const src = slots[k], dst = d * SPD + sc.shiftTo + k; if (dst >= L) continue;
+          const lvl = e.workBase ?? e.allowed, moved = Math.max(0, b[src] - lvl);
+          a[src] = b[src] - moved;
+          a[dst] = Math.min(e.rated, a[dst] + moved);
+          if (!isWork(w * 7 + d, sc.shiftTo + k)) warn.add('early');
+        }
+      }
+    }
+    for (let i = 0; i < L; i++) { eqB[i] += b[i]; eqA[i] += a[i]; }
+  }
+  const facA = new Float32Array(L);
+  for (let i = 0; i < L; i++) facA[i] = facB[i] - eqB[i] + eqA[i];
+  let kB = 0, kA = 0, cB = 0, cA = 0, pB = 0, pA = 0, iB = 0, iA = 0, bestD = 0, bestV = -1;
+  const dayDiff = Array(7).fill(0);
+  for (let i = 0; i < L; i++) {
+    const d = w * 7 + Math.floor(i / SPD), s2 = i % SPD, pr = price(d, s2);
+    kB += eqB[i] * 0.25; kA += eqA[i] * 0.25; cB += eqB[i] * 0.25 * pr; cA += eqA[i] * 0.25 * pr;
+    if (facB[i] > pB) { pB = facB[i]; iB = i; } if (facA[i] > pA) { pA = facA[i]; iA = i; }
+    dayDiff[Math.floor(i / SPD)] += Math.abs(eqB[i] - eqA[i]);
+  }
+  dayDiff.forEach((v, d) => { if (v > bestV) { bestV = v; bestD = d; } });
+  if (pA < pB - 0.5) bestD = Math.floor(iB / SPD);
+  return { sc, w, eqB, eqA, facB, facA, kB, kA, cB, cA, pB, pA, iB, iA, day: bestD, warn };
+}
+function simText(r) {
+  const sc = r.sc, dk = r.kB - r.kA, dc = r.cB - r.cA, dp = r.pB - r.pA;
+  const names = [...new Set(sc.eqs.map(id => EQ[id].name))].join(', ');
+  const tAt = i => { const d = dayDate(r.w * 7 + Math.floor(i / SPD)); return `${md(d)}(${DOW[d.getDay()]}) ${hhmm(i % SPD)}`; };
+  let t = `<b>${PRESETS[STATE.sim]?.label || '이 시나리오'}</b>를 지난주에 적용했다면 ${names}의 사용량은 ${Math.abs(dk) < 1 ? '그대로이고' : `주 <b>${fmt(dk, 0)} kWh</b> ${dk > 0 ? '줄고' : '늘고'}`}, 전력량요금은 주 <b>${won(dc)}</b> ${dc >= 0 ? '줄어듭니다' : '늘어납니다'} (연 환산 약 ${manR(dc * 52)}만 원). `;
+  if (sc.type === 'shift') t += `옮긴 부하는 ${hhmm(sc.from)}–${hhmm(sc.to)}의 중간부하 단가 대신 경부하 단가를 적용받습니다. `;
+  if (dp > 0.5) t += `공장 최대수요는 <b>${fmt(r.pB, 0)} → ${fmt(r.pA, 0)} kW (${fmt(dp, 0)} kW 감소)</b>입니다. 피크 시각은 ${tAt(r.iB)}에서 ${tAt(r.iA)}로 옮겨져, 줄인 부하만큼 그대로 내려가지는 않습니다. 이 주의 최대수요가 연중 최대라면 기본요금은 연 최대 ${manR(dp * BASIC * 12)}만 원 줄어듭니다. `;
+  else t += `비가동 시간 조치라 공장 최대수요(${fmt(r.pB, 0)} kW, ${tAt(r.iB)})에는 영향이 없습니다. `;
+  const cav = [];
+  if (sc.eqs.includes('E01')) cav.push('주말 도장 작업이 없는지, 부스 환기 규정상 상시 운전 의무가 없는지 확인');
+  if (sc.eqs.includes('E05')) cav.push('비가동 시간에 에어를 쓰는 곳(도장 2동 에어블로어 등)이 있는지 확인');
+  if (sc.eqs.includes('E04') && sc.type === 'off') cav.push('건조로 설정 온도 도달 시간과 첫 작업 품질 확인');
+  if (r.warn.has('early')) cav.push('옮긴 시간대(07시 이전)의 작업 인력·순서 조정 필요');
+  if (r.warn.has('rebound')) cav.push('재가동 시 순간 부하가 생기지만 06시대라 피크 시간대와 겹치지 않음');
+  if (r.warn.has('prod')) cav.push('생산 시간대가 포함되어 있어 공정 영향 검토 필요');
+  if (cav.length) t += `<br><b>확인할 점</b> · ${cav.join(' / ')}`;
+  return t;
+}
+function simDayChart(r) {
+  const d = r.day, L = SPD, o = d * SPD, W = 1240, H = 250, x0 = 52, y0 = 20, ph = 190, pw = W - x0 - 12;
+  let max = 0; for (let k = 0; k < L; k++) max = Math.max(max, r.facB[o + k], r.facA[o + k]);
+  max = Math.ceil(max * 1.08 / 100) * 100;
+  const X = k => x0 + k / L * pw, Y = v => y0 + ph - v / max * ph;
+  const path = arr => { let p = ''; for (let k = 0; k < L; k++) p += `${k ? 'L' : 'M'}${X(k).toFixed(1)} ${Y(arr[o + k]).toFixed(1)}`; return p; };
+  let shade = ''; let s2 = 0; const dd = r.w * 7 + d;
+  while (s2 < SPD) { if (!isWork(dd, s2)) { let t = s2; while (t < SPD && !isWork(dd, t)) t++; shade += `<rect x="${X(s2)}" y="${y0}" width="${X(t) - X(s2)}" height="${ph}" fill="#eef0f3"/>`; s2 = t; } else s2++; }
+  const ticks = [0, max / 2, max];
+  const pk = (i, col, lab) => i >= o && i < o + L ? `<circle cx="${X(i - o)}" cy="${Y(lab === 'B' ? r.facB[i] : r.facA[i])}" r="4.5" fill="${col}" stroke="#fff" stroke-width="2"/>` : '';
+  const hov = Array.from({ length: 48 }, (_, h) => { const k = h * 2; return `<rect x="${X(k)}" y="${y0}" width="${X(k + 2) - X(k)}" height="${ph}" fill="transparent" data-tip="${hhmm(k)}<br>조치 전 <b>${fmt(r.facB[o + k], 0)} kW</b><br>조치 후 <b>${fmt(r.facA[o + k], 0)} kW</b>"/>`; }).join('');
+  const dt = dayDate(dd);
+  return `<div class="legend"><span><i class="ln" style="background:var(--waste)"></i>조치 전 공장 부하</span><span><i class="ln" style="background:var(--accent)"></i>조치 후 공장 부하</span><span><i style="background:#e9ebef"></i>비가동 시간</span><span>● 주간 최대수요 지점</span></div>
+  <svg class="chart" viewBox="0 0 ${W} ${H}">${shade}
+    ${ticks.map(t => `<line x1="${x0}" x2="${W - 12}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--line)" stroke-opacity=".7"/><text x="${x0 - 8}" y="${Y(t) + 4}" font-size="11" text-anchor="end" fill="var(--ink3)">${fmt(t, 0)}</text>`).join('')}
+    ${[0, 6, 12, 18, 24].map(h => `<text x="${X(h * 4)}" y="${H - 10}" font-size="11" text-anchor="${h === 0 ? 'start' : h === 24 ? 'end' : 'middle'}" fill="var(--ink3)">${String(h).padStart(2, '0')}:00</text>`).join('')}
+    <text x="${x0 - 8}" y="${y0 - 8}" font-size="11" text-anchor="end" fill="var(--ink3)">kW</text>
+    <text x="${W - 12}" y="${y0 - 6}" font-size="12" text-anchor="end" fill="var(--ink2)">${md(dt)}(${DOW[dt.getDay()]}) · 영향이 가장 큰 날</text>
+    <path d="${path(r.facB)}" fill="none" stroke="var(--waste)" stroke-width="1.8"/>
+    <path d="${path(r.facA)}" fill="none" stroke="var(--accent)" stroke-width="1.8"/>
+    ${pk(r.iB, 'var(--waste)', 'B')}${pk(r.iA, 'var(--accent)', 'A')}${hov}</svg>`;
+}
+function renderSim() {
+  const sc = STATE.simCustom || PRESETS[STATE.sim];
+  const r = simulate(sc), dk = r.kB - r.kA, dc = r.cB - r.cA, dp = r.pB - r.pA;
+  const eqOpts = EQUIP.filter(e => e.id !== 'E11').map(e => `<option value="${e.id}" ${sc.eqs[0] === e.id ? 'selected' : ''}>${e.zone} · ${e.name}</option>`).join('');
+  const tOpts = sel => Array.from({ length: 48 }, (_, h) => h * 2).map(k => `<option value="${k}" ${k === sel ? 'selected' : ''}>${hhmm(k)}</option>`).join('') + `<option value="96" ${sel === 96 ? 'selected' : ''}>24:00</option>`;
+  const delta = (v, unit, dec = 0, good = true) => `<span class="${(v > 0) === good ? 'down' : 'up'}">${v > 0 ? '▼' : v < 0 ? '▲' : ''} ${fmt(Math.abs(v), dec)}${unit}</span>`;
+  return `
+  <div class="pagehead"><div><h1>조치 시뮬레이션</h1><div class="sub">지난주(${weekLabel(WEEKS - 1)}) 실제 15분 데이터에 조치를 적용해 사용량·요금·공장 최대수요 변화를 계산합니다</div></div></div>
+  <div class="card" style="margin-bottom:14px">
+    <h2>✦ 말로 물어보기</h2><div class="cap">문장을 AI가 시나리오(설비·시간대·방식)로 바꿔 엔진에 넘깁니다 · 미리보기는 예시 문장만 이해합니다</div>
+    <div class="nlbox"><input id="nlIn" value="주말에 도장 배기팬 다 끄면 얼마나 줄어?" /><button class="btn primary" id="nlGo">시뮬레이션</button></div>
+    <div class="presets">${Object.entries(PRESETS).map(([k, v]) => `<button data-preset="${k}" class="${!STATE.simCustom && STATE.sim === k ? 'on' : ''}">${v.label}</button>`).join('')}</div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <h2>시나리오 직접 설정</h2><div class="cap">AI가 해석한 결과도 여기에 채워집니다. 값을 바꿔 다시 실행할 수 있습니다</div>
+    <div class="simform">
+      <div><label>설비</label><select id="sEq">${eqOpts}</select>${sc.eqs.length > 1 ? `<div class="small muted" style="margin-top:4px">외 ${sc.eqs.length - 1}대 함께</div>` : ''}</div>
+      <div><label>방식</label><select id="sType"><option value="off" ${sc.type === 'off' ? 'selected' : ''}>끄기</option><option value="shift" ${sc.type === 'shift' ? 'selected' : ''}>옮기기</option></select></div>
+      <div><label>요일</label><select id="sDays"><option value="weekday" ${sc.days === 'weekday' ? 'selected' : ''}>평일</option><option value="weekend" ${sc.days === 'weekend' ? 'selected' : ''}>주말·휴일</option><option value="all" ${sc.days === 'all' ? 'selected' : ''}>매일</option><option value="idle" ${sc.days === 'idle' ? 'selected' : ''}>비가동 시간 전체</option></select></div>
+      <div><label>시작</label><select id="sFrom">${tOpts(sc.from)}</select></div>
+      <div><label>종료</label><select id="sTo">${tOpts(sc.to)}</select></div>
+      <div><label>옮길 시작 시각</label><select id="sShift" ${sc.type === 'shift' ? '' : 'disabled'}>${tOpts(sc.shiftTo ?? 20)}</select></div>
+      <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end"><label style="margin:0;display:flex;gap:5px;align-items:center"><input type="checkbox" id="sReb" ${sc.rebound ? 'checked' : ''}/> 재가동 부하 반영</label><button class="btn primary" id="sRun">실행</button></div>
+    </div>
+  </div>
+  <div class="grid kpis" style="grid-template-columns:repeat(4,1fr)">
+    <div class="card kpi"><div class="lab">대상 설비 사용량 (주)</div><div class="val">${fmt(r.kA, 0)}<small>kWh</small></div><div class="delta">${Math.abs(dk) < 1 ? '변화 없음 (시간만 이동)' : delta(dk, ' kWh')} · 조치 전 ${fmt(r.kB, 0)}</div></div>
+    <div class="card kpi"><div class="lab">전력량요금 (연 환산)</div><div class="val">${dc >= 0 ? '−' : '+'}${manR(Math.abs(dc) * 52)}<small>만 원</small></div><div class="delta">주 ${won(Math.abs(dc))} ${dc >= 0 ? '절감' : '증가'} · 시간대별 예시 단가</div></div>
+    <div class="card kpi"><div class="lab">공장 최대수요 (주간)</div><div class="val">${fmt(r.pA, 0)}<small>kW</small></div><div class="delta">${dp > 0.5 ? delta(dp, ' kW') : '변화 없음'} · 조치 전 ${fmt(r.pB, 0)}</div></div>
+    <div class="card kpi"><div class="lab">기본요금 영향 (연, 상한)</div><div class="val">${dp > 0.5 ? '−' + manR(dp * BASIC * 12) : '0'}<small>만 원</small></div><div class="delta">${fmt(BASIC, 0)}원/kW·월 예시 · 연중 피크일 때</div></div>
+  </div>
+  <div class="ai"><span class="badge">✦ AI 해석</span><p>${simText(r)}</p><div class="foot"><span>숫자는 시뮬레이션 엔진 결과이고, AI는 의미와 확인할 점을 정리했습니다</span><button class="linkbtn" id="simSave">비교함에 담기</button></div></div>
+  <div class="card" style="margin-bottom:14px"><h2>공장 15분 부하 · 조치 전후</h2>${simDayChart(r)}</div>
+  ${STATE.simRuns.length ? `<div class="card"><h2>시나리오 비교함</h2><div class="cap">담아 둔 시나리오를 나란히 비교합니다</div><table><thead><tr><th>시나리오</th><th class="num">사용량 감소 (주)</th><th class="num">전력량요금 (연)</th><th class="num">최대수요 감소</th><th class="num">기본요금 (연, 상한)</th><th></th></tr></thead><tbody>${STATE.simRuns.map((x, i) => `<tr><td>${x.label}</td><td class="num">${fmt(x.dk, 0)} kWh</td><td class="num">${manR(x.dc * 52)}만 원</td><td class="num">${x.dp > 0.5 ? fmt(x.dp, 0) + ' kW' : '–'}</td><td class="num">${x.dp > 0.5 ? manR(x.dp * BASIC * 12) + '만 원' : '–'}</td><td><button class="btn ghost" data-rmrun="${i}">빼기</button></td></tr>`).join('')}</tbody></table></div>` : ''}`;
+}
+function bindSim(m) {
+  const r = () => { STATE.simCustom = null; };
+  m.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => { r(); STATE.sim = b.dataset.preset; render(); });
+  const go2 = () => { const k = nlParse($('#nlIn').value); if (!k) { flash('미리보기에서는 배기팬·압축기·예열·옮기기·공조기 예시만 이해합니다.'); return; } r(); STATE.sim = k; render(); flash(`AI가 “${PRESETS[k].label}”로 해석했습니다.`); };
+  $('#nlGo').onclick = go2; $('#nlIn').onkeydown = ev => { if (ev.key === 'Enter') go2(); };
+  $('#sType').onchange = () => { $('#sShift').disabled = $('#sType').value !== 'shift'; };
+  $('#sRun').onclick = () => {
+    const cur = STATE.simCustom || PRESETS[STATE.sim], id = $('#sEq').value;
+    STATE.simCustom = { eqs: id === cur.eqs[0] ? cur.eqs : [id], type: $('#sType').value, days: $('#sDays').value, from: +$('#sFrom').value, to: +$('#sTo').value, shiftTo: +$('#sShift').value, rebound: $('#sReb').checked };
+    STATE.sim = 'custom'; render();
+  };
+  $('#simSave').onclick = () => { const sc = STATE.simCustom || PRESETS[STATE.sim], x = simulate(sc);
+    const lab = STATE.simCustom ? `${EQ[sc.eqs[0]].name}${sc.eqs.length > 1 ? ` 외 ${sc.eqs.length - 1}대` : ''} · ${sc.type === 'off' ? '끄기' : '옮기기'} ${sc.days === 'idle' ? '비가동 전체' : `${hhmm(sc.from)}–${hhmm(sc.to % 96 === 0 && sc.to ? 96 : sc.to).replace('24:00', '24:00')}`}${sc.type === 'shift' ? ` → ${hhmm(sc.shiftTo)}` : ''}` : PRESETS[STATE.sim].label;
+    STATE.simRuns.push({ label: lab, dk: x.kB - x.kA, dc: x.cB - x.cA, dp: x.pB - x.pA }); render(); flash('비교함에 담았습니다.'); };
+  m.querySelectorAll('[data-rmrun]').forEach(b => b.onclick = () => { STATE.simRuns.splice(+b.dataset.rmrun, 1); render(); });
+}
+
+/* =========================================================
    8. 조치·예외 처리, 모달, 알림, 질의
    ========================================================= */
 const today = '11/23';
@@ -619,7 +897,7 @@ function undo(id) {
   (STATE.log[id] = STATE.log[id] || []).push({ at: today, t: '상태 되돌림' });
 }
 function openModal(html) { $('#modal').innerHTML = html; $('#modalBg').style.display = 'flex'; }
-function closeModal() { $('#modalBg').style.display = 'none'; }
+function closeModal() { $('#modalBg').style.display = 'none'; $('#modal').classList.remove('wide'); }
 $('#modalBg').addEventListener('click', ev => { if (ev.target.id === 'modalBg') closeModal(); });
 
 function askDone(id) {
@@ -641,6 +919,47 @@ function askExc(id) {
     <div class="small muted" style="margin-top:10px">예외 기간이 끝나면 다시 판정 대상이 되고, 담당자에게 재확인을 요청합니다.</div>
     <div class="row-end"><button class="btn" onclick="closeModal()">취소</button><button class="btn primary" id="mOk">등록</button></div>`);
   $('#mOk').onclick = () => { setStatus(id, 'exc', `${$('#mWhy').value} · ${$('#mFor').value}`); closeModal(); render(); flash('예외로 등록했습니다. 기간 동안 리포트에서 제외됩니다.'); };
+}
+// LLM: 현장 담당자가 말로 적은 상황 → 예외·조치·확인 요청으로 구조화 (데모: 키워드 규칙으로 재현)
+const FREE_EX = {
+  E05: '3호기는 도장 2동 에어블로어 때문에 토요일엔 필요해요. 일요일은 필요 없어서 끄면 됩니다.',
+  E01: '배기팬은 주말에 쓸 일 없어요. 금요일 퇴근할 때 끄는 걸 깜빡했네요. 타이머 걸어둘게요.',
+  E04: '예열 시간은 생산팀이랑 얘기해봐야 해요. 겨울엔 좀 일찍 켜야 할 수도 있음.',
+  E07: '지난주에 BAS 업체가 스케줄 바꾼 뒤로 그런 것 같아요. 업체에 확인 요청할게요.',
+};
+function parseFree(t, e) {
+  const out = [];
+  const sat = /토요일/.test(t), sun = /일요일/.test(t);
+  if (sat && /필요/.test(t) && !/토요일[^.]*필요 ?없/.test(t)) out.push({ k: 'exc', d: `예외 · 토요일만 운전 필요 (${/블로어|에어/.test(t) ? '에어블로어 사용' : '현장 사유'}) · 3개월`, s: '토요일 허용 부하를 현재 운전값으로 올립니다' });
+  if (sun && /(필요 ?없|끄)/.test(t)) out.push({ k: 'done', d: '조치 · 일요일 정지', s: '다음 주 일요일부터 낭비 여부를 다시 판정합니다' });
+  if (/타이머|스케줄 ?(걸|설정)/.test(t)) out.push({ k: 'done', d: '조치 · 타이머·스케줄 설정', s: '조치 후 4주 뒤 효과 판정' });
+  if (/깜빡|퇴근/.test(t) && !out.some(x => x.k === 'done')) out.push({ k: 'done', d: '조치 · 퇴근 시 수동 정지', s: '금요일 퇴근 점검표에 추가 제안' });
+  if (/(얘기|협의|확인 ?요청|업체|생산팀)/.test(t)) out.push({ k: 'check', d: `확인 필요 · ${/업체|BAS/.test(t) ? 'BAS 업체 스케줄 확인' : '생산팀 협의'}`, s: '1주 후 담당자에게 결과를 다시 묻습니다' });
+  if (/겨울|기온|추우/.test(t)) out.push({ k: 'note', d: '메모 · 동절기 예열 시간 조정 가능성', s: '기온 보정 기준 검토 대상으로 에너지팀에 전달' });
+  if (!out.length) out.push({ k: 'check', d: '확인 필요 · 내용 확인', s: '에너지팀이 내용을 검토합니다' });
+  return out;
+}
+function askFree(id) {
+  const e = EQ[id];
+  openModal(`<h3>✦ 상황을 말로 입력</h3><div class="small muted">${e.zone} · ${e.name} — 버튼 대신 상황을 그대로 적으면 AI가 예외·조치·확인 요청으로 나눠 정리합니다</div>
+    <label>현장 상황</label><textarea id="fText" rows="3">${FREE_EX[id] || FREE_EX.E01}</textarea>
+    <div style="margin-top:8px"><button class="btn" id="fParse" style="color:var(--ai);border-color:#ddd5fb">✦ AI로 정리</button></div>
+    <div class="parsed" id="fOut"></div>
+    <div class="row-end"><button class="btn" onclick="closeModal()">취소</button><button class="btn primary" id="fOk" disabled>이대로 저장</button></div>`);
+  $('#modal').classList.add('wide');
+  let items = [];
+  $('#fParse').onclick = () => {
+    items = parseFree($('#fText').value, e);
+    const ic = { exc: ['exc', '예외'], done: ['done', '조치'], check: ['check', '확인'], note: ['wait', '메모'] };
+    $('#fOut').innerHTML = `<div class="small muted">${items.length}건으로 정리했습니다. 맞으면 저장하세요.</div>` + items.map(x => `<div class="pc"><span class="chip ${ic[x.k][0]}">${ic[x.k][1]}</span><div><div>${x.d}</div><div class="small muted">${x.s}</div></div></div>`).join('');
+    $('#fOk').disabled = false;
+  };
+  $('#fOk').onclick = () => {
+    const main = items.find(x => x.k === 'done') || items.find(x => x.k === 'exc') || items[0];
+    items.filter(x => x !== main).forEach(x => (STATE.log[id] = STATE.log[id] || []).push({ at: today, t: `${x.d} (AI 정리)` }));
+    setStatus(id, main.k === 'note' ? 'check' : main.k, main.d.replace(/^(조치|예외|확인 필요) · /, '') + ' (AI 정리)');
+    closeModal(); $('#modal').classList.remove('wide'); render(); flash(`${items.length}건을 기록했습니다.`);
+  };
 }
 function flash(msg) { const t = $('#toast'); t.style.right = $('#drawer').style.display === 'flex' ? '424px' : '24px'; t.style.borderLeftColor = 'var(--good)'; t.innerHTML = `<div class="t2" style="margin:0">${msg}</div>`; t.style.display = 'block'; clearTimeout(flash.h); flash.h = setTimeout(() => t.style.display = 'none', 2600); }
 
@@ -664,19 +983,21 @@ function answer(q) {
   if (q.startsWith('지난달')) { const a = [8, 9, 10, 11].reduce((s, x) => s + WASTE[WI[e.id]][x].kwh, 0), b = [4, 5, 6, 7].reduce((s, x) => s + WASTE[WI[e.id]][x].kwh, 0);
     return { a: `${e.name}의 최근 4주 비가동 낭비는 ${fmt(a, 0)}kWh로, 그 전 4주(${fmt(b, 0)}kWh)보다 ${a >= b ? fmt(a - b, 0) + 'kWh 늘었습니다' : fmt(b - a, 0) + 'kWh 줄었습니다'}. ${a > b * 1.5 ? '최근에 새로 생긴 패턴이라 설정 변경이나 운전 방식 변화를 먼저 확인해 보세요.' : ''}`, src: '주간 집계 API · 최근 8주' }; }
   if (q.startsWith('이 설비')) return { a: `알겠습니다. ${e.name}을 예외로 등록하려면 사유와 기간이 필요합니다. 등록 화면을 열어 드릴게요. 상시 예외는 에너지팀 승인 후 적용됩니다.`, src: '조치는 사람이 화면에서 확정합니다', act: () => askExc(e.id) };
+  if (q.startsWith('건조로')) { const x = simulate(PRESETS.p4);
+    return { a: `건조로 2호기의 14–16시 고온 공정을 05–07시로 옮기면 공장 최대수요가 ${fmt(x.pB, 0)}kW에서 ${fmt(x.pA, 0)}kW로 ${fmt(x.pB - x.pA, 0)}kW 줄고, 전력량요금도 연 약 ${manR((x.cB - x.cA) * 52)}만 원 줄어듭니다. 다만 07시 이전 작업 인력 배치가 필요합니다. 시뮬레이션 화면에서 자세히 보여드릴게요.`, src: '시뮬레이션 API · 지난주 데이터', act: () => go('sim', { sim: 'p4', simCustom: null }) }; }
   if (q.startsWith('도장부')) { const rows = weekRows(w).filter(r => r.e.dept === '도장부'); const c = rows.reduce((s, r) => s + r.cost, 0);
     return { a: `지난주 도장부 낭비는 ${rows.length}개 설비, 약 ${man(c)}만 원입니다. 배기팬 3대가 ${fmt(rows.filter(r => r.e.type === '배기팬').reduce((s, r) => s + r.cost, 0) / c * 100, 0)}%를 차지하고, 세 대 모두 주말 정지가 빠진 같은 패턴입니다. 금요일 퇴근 점검표에 배기팬 정지를 넣는 것을 추천합니다.`, src: '주간 집계 API · 부서 필터' }; }
   return { a: '미리보기에서는 아래 추천 질문만 답할 수 있습니다.', src: '' };
 }
-const SUGG = ['왜 낭비로 판단했어?', '지난달이랑 비교하면?', '이 설비 항상 켜져 있어야 해', '도장부는 뭐가 문제야?'];
+const SUGG = ['왜 낭비로 판단했어?', '지난달이랑 비교하면?', '이 설비 항상 켜져 있어야 해', '도장부는 뭐가 문제야?', '건조로를 새벽으로 옮기면 피크는?'];
 function renderChat() {
   $('#chat').innerHTML = (STATE.chat.length ? '' : `<div class="msg bot">지금 보고 있는 화면 기준으로 답합니다. 현재 설비: <b>${EQ[STATE.eq].name}</b><div class="src">설비 상세에서 다른 설비를 고르면 기준이 바뀝니다.</div></div>`) +
     STATE.chat.map(m => m.me ? `<div class="msg me">${m.t}</div>` : `<div class="msg bot">${m.t}${m.src ? `<div class="src">근거: ${m.src}</div>` : ''}</div>`).join('');
   $('#sugg').innerHTML = SUGG.map(s => `<button>${s}</button>`).join('');
   $('#sugg').querySelectorAll('button').forEach(b => b.onclick = () => { const r = answer(b.textContent); STATE.chat.push({ me: true, t: b.textContent }, { t: r.a, src: r.src }); renderChat(); $('#chat').scrollTop = 1e6; if (r.act) setTimeout(r.act, 400); });
 }
-$('#askBtn').onclick = () => { $('#drawer').style.display = 'flex'; $('#askBtn').classList.add('hidden'); renderChat(); };
-$('#drawerClose').onclick = () => { $('#drawer').style.display = 'none'; $('#askBtn').classList.remove('hidden'); };
+$('#askBtn').onclick = () => { document.body.classList.add('dopen'); $('#drawer').style.display = 'flex'; $('#askBtn').classList.add('hidden'); renderChat(); };
+$('#drawerClose').onclick = () => { document.body.classList.remove('dopen'); $('#drawer').style.display = 'none'; $('#askBtn').classList.remove('hidden'); };
 
 /* =========================================================
    9. 렌더
@@ -685,11 +1006,15 @@ function render() {
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.page === STATE.page));
   document.querySelectorAll('#role button').forEach(b => b.classList.toggle('on', b.dataset.role === STATE.role));
   const m = $('#main');
-  m.innerHTML = STATE.page === 'report' ? renderReport() : STATE.page === 'detail' ? renderDetail() : renderEffect();
+  m.innerHTML = STATE.page === 'report' ? renderReport() : STATE.page === 'detail' ? renderDetail() : STATE.page === 'sim' ? renderSim() : renderEffect();
+  if (STATE.page === 'sim') bindSim(m);
   bindTips(m);
   m.querySelectorAll('tr.row').forEach(tr => tr.addEventListener('click', ev => { if (ev.target.closest('button')) return; go('detail', { eq: tr.dataset.eq }); }));
   m.querySelectorAll('[data-act]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const id = b.dataset.id, a = b.dataset.act;
-    if (a === 'done') askDone(id); else if (a === 'exc') askExc(id); else if (a === 'check') { setStatus(id, 'check'); render(); flash('현장 점검을 요청했습니다.'); } else { undo(id); render(); } });
+    if (a === 'done') askDone(id); else if (a === 'exc') askExc(id); else if (a === 'free') askFree(id); else if (a === 'check') { setStatus(id, 'check'); render(); flash('현장 점검을 요청했습니다.'); } else { undo(id); render(); } });
+  m.querySelectorAll('[data-sim]').forEach(b => b.onclick = ev => { ev.stopPropagation(); STATE.simCustom = null; go('sim', { sim: b.dataset.sim }); });
+  m.querySelectorAll('[data-goeq]').forEach(b => b.onclick = () => go('detail', { eq: b.dataset.goeq }));
+  m.querySelectorAll('[data-incl]').forEach(b => b.onclick = () => { STATE.include[b.dataset.incl] = true; render(); flash('낭비로 포함했습니다. 이 판단은 AI 판정 정확도 점검에 반영됩니다.'); });
   const ws = $('#weekSel'); if (ws) ws.onchange = () => { STATE.week = +ws.value; render(); };
   const es = $('#eqSel'); if (es) es.onchange = () => { STATE.eq = es.value; render(); if ($('#drawer').style.display === 'flex') renderChat(); };
   const bb = $('#basisBtn'); if (bb) bb.onclick = () => $('#aiBox').classList.toggle('open');
